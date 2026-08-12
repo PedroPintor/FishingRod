@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FishingRod — Interface Ilustrativa</title>
+<style>
+/* ------------------------------------------------------------------
+   MOCKUP ILUSTRATIVO - nada aqui e' o sistema de verdade.
+   O JS do fim do arquivo so redesenha a tela a partir de dados falsos.
+   ------------------------------------------------------------------ */
+:root{
+  --fundo:        #1b1b1b;
+  --painel:       #202020;
+  --cartao:       #262626;
+  --cartao-alto:  #2e2e2e;
+  --borda:        #3a3a3a;
+  --borda-forte:  #4d4d4d;
+  --texto:        #d6d6d6;
+  --texto-fraco:  #8a8a8a;
+  --usuario:      #4ec9d9;
+  --agente:       #7bc96f;
+  --sistema:      #d7b25a;
+  --destaque:     #6ea8fe;
+  --raio:         8px;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+
+body{
+  background:var(--fundo);
+  color:var(--texto);
+  font-family:"Segoe UI",system-ui,-apple-system,sans-serif;
+  font-size:14px;
+  height:100vh;
+  overflow:hidden;
+}
+
+.app{
+  display:flex;
+  gap:6px;
+  height:100vh;
+  padding:10px;
+}
+
+/* ===================== SIDEBAR ===================== */
+.sidebar{
+  width:215px;
+  flex:none;
+  display:flex;
+  flex-direction:column;
+  border:1px solid var(--borda);
+  border-radius:var(--raio);
+  padding:14px 12px;
+  background:var(--painel);
+  min-height:0;
+}
+
+.sidebar h1{font-size:15px;font-weight:600;letter-spacing:.2px}
+.sidebar h1 small{
+  display:block;
+  font-size:11px;
+  font-weight:400;
+  color:var(--texto-fraco);
+  margin-top:3px;
+}
+
+.regua{border:none;border-top:1px solid var(--borda);margin:12px 0 14px}
+
+/* --- WIKI / Kanban: dois botoes colados --- */
+.visoes{display:flex;flex-direction:column}
+.visoes button{
+  text-align:left;
+  background:var(--cartao);
+  color:var(--texto);
+  border:1px solid var(--borda-forte);
+  padding:10px 12px;
+  font:inherit;
+  font-weight:600;
+  cursor:pointer;
+}
+.visoes button:first-child{border-radius:var(--raio) var(--raio) 0 0}
+.visoes button:last-child{border-radius:0 0 var(--raio) var(--raio);margin-top:-1px}
+.visoes button:hover{background:var(--cartao-alto)}
+.visoes button.ativo{
+  border-color:var(--destaque);
+  color:#fff;
+  box-shadow:inset 2px 0 0 var(--destaque);
+}
+
+/* --- caixas de Projetos e Sessoes --- */
+.caixa-lateral{
+  margin-top:16px;
+  border:1px solid var(--borda-forte);
+  border-radius:var(--raio);
+  background:var(--cartao);
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+}
+
+.cabecalho{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 8px 10px 12px;
+}
+.cabecalho .rotulo{flex:1;min-width:0}
+.cabecalho .rotulo b{display:block;font-size:13.5px;font-weight:600}
+.cabecalho .rotulo span{
+  display:block;
+  font-size:11px;
+  color:var(--destaque);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  margin-top:2px;
+}
+
+/* o botaozinho "v" do rascunho */
+.chevron{
+  flex:none;
+  width:28px;
+  height:28px;
+  background:var(--cartao-alto);
+  color:var(--texto-fraco);
+  border:1px solid var(--borda-forte);
+  border-radius:6px;
+  font:inherit;
+  font-size:11px;
+  cursor:pointer;
+  transition:transform .15s;
+}
+.chevron:hover{color:var(--texto)}
+.caixa-lateral.aberta .chevron{transform:rotate(180deg)}
+
+/* corpo do dropdown de projetos: some quando fechado */
+.corpo{
+  border-top:1px solid var(--borda);
+  padding:6px;
+  overflow-y:auto;
+}
+.caixa-lateral:not(.aberta) .corpo.dropdown{display:none}
+
+.item{
+  padding:7px 9px;
+  border-radius:5px;
+  font-size:12.5px;
+  color:var(--texto-fraco);
+  cursor:pointer;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.item:hover{background:var(--cartao-alto);color:var(--texto)}
+.item.ativo{background:var(--cartao-alto);color:var(--destaque);font-weight:600}
+.item .contagem{float:right;font-size:10.5px;color:var(--texto-fraco);font-weight:400}
+
+/* a caixa de sessoes estica ate o fim da sidebar */
+#caixa-sessoes{flex:1}
+#caixa-sessoes .corpo{flex:1}
+.vazio{padding:10px;font-size:11.5px;color:var(--texto-fraco);line-height:1.5}
+
+/* linha pontilhada do rascunho, entre sidebar e painel */
+.divisoria{
+  width:4px;
+  flex:none;
+  background-image:radial-gradient(var(--borda) 1px,transparent 1px);
+  background-size:4px 8px;
+}
+
+/* ===================== PAINEL PRINCIPAL ===================== */
+.principal{flex:1;display:flex;flex-direction:column;gap:8px;min-width:0}
+
+/* --- abas = chats da sessao selecionada --- */
+.abas{
+  display:flex;
+  border:1px solid var(--borda);
+  border-radius:var(--raio);
+  padding:6px;
+  background:var(--painel);
+  overflow-x:auto;
+}
+.aba{
+  background:transparent;
+  color:var(--texto-fraco);
+  border:1px solid transparent;
+  border-radius:6px;
+  padding:8px 16px;
+  font:inherit;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.aba:hover{background:var(--cartao)}
+.aba.ativa{background:var(--cartao);border-color:var(--borda-forte);color:var(--texto)}
+.aba .papel{
+  font-size:10px;
+  color:var(--texto-fraco);
+  margin-left:6px;
+  border:1px solid var(--borda-forte);
+  border-radius:3px;
+  padding:1px 5px;
+}
+.aba-nova{margin-left:auto;padding:8px 14px;font-size:16px;line-height:1;flex:none}
+
+/* --- caixa grande: conteudo + prompt --- */
+.caixa{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  border:1px solid var(--borda);
+  border-radius:var(--raio);
+  background:var(--painel);
+  padding:14px;
+  min-height:0;
+}
+
+.miolo{flex:1;display:flex;gap:12px;min-height:0}
+.conteudo{flex:1;overflow-y:auto;padding-right:6px;min-width:0}
+
+/* --- visao CHAT --- */
+.msg{margin-bottom:14px;line-height:1.55}
+.msg .autor{font-weight:600}
+.msg.usuario .autor{color:var(--usuario)}
+.msg.agente  .autor{color:var(--agente)}
+.msg.sistema .autor{color:var(--sistema)}
+.msg.sistema .texto{color:var(--sistema);white-space:pre-wrap;font-family:Consolas,monospace;font-size:12.5px}
+.msg .texto{display:block;margin-top:3px}
+.msg code{background:var(--cartao);padding:1px 5px;border-radius:3px;font-size:12px}
+
+/* --- painel lateral da memoria (blackboard da sessao) --- */
+.memoria{
+  width:250px;
+  flex:none;
+  border-left:1px solid var(--borda);
+  padding-left:12px;
+  overflow-y:auto;
+  font-size:12px;
+}
+.memoria.escondida{display:none}
+.memoria h3{font-size:10px;letter-spacing:1px;color:var(--texto-fraco);margin-bottom:10px}
+.anotacao{
+  background:var(--cartao);
+  border:1px solid var(--borda);
+  border-radius:6px;
+  padding:8px 10px;
+  margin-bottom:8px;
+}
+.anotacao .chave{color:var(--destaque);font-weight:600;font-family:Consolas,monospace}
+.anotacao .autor{display:block;color:var(--texto-fraco);font-size:10.5px;margin:3px 0 5px}
+.anotacao .valor{line-height:1.5}
+
+/* --- visao WIKI --- */
+.wiki{display:flex;gap:18px;height:100%}
+.wiki-indice{width:180px;flex:none;border-right:1px solid var(--borda);padding-right:12px}
+.wiki-indice div{padding:6px 8px;border-radius:5px;color:var(--texto-fraco)}
+.wiki-indice div.ativo{background:var(--cartao);color:var(--texto)}
+.wiki-texto{flex:1;line-height:1.7;max-width:70ch}
+.wiki-texto h2{font-size:18px;margin-bottom:4px}
+.wiki-texto .meta{color:var(--texto-fraco);font-size:11px;margin-bottom:16px}
+.wiki-texto h3{font-size:13px;margin:18px 0 6px;color:var(--destaque)}
+.wiki-texto p{margin-bottom:10px;color:#c2c2c2}
+.wiki-texto code{background:var(--cartao);padding:1px 5px;border-radius:3px;font-size:12px}
+
+/* --- visao KANBAN --- */
+.kanban{display:flex;gap:12px;height:100%}
+.coluna{
+  flex:1;
+  background:var(--fundo);
+  border:1px solid var(--borda);
+  border-radius:var(--raio);
+  padding:10px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  min-width:0;
+}
+.coluna > .titulo{
+  font-size:11px;
+  letter-spacing:1px;
+  color:var(--texto-fraco);
+  display:flex;
+  justify-content:space-between;
+}
+.card{
+  background:var(--cartao);
+  border:1px solid var(--borda-forte);
+  border-radius:6px;
+  padding:9px 10px;
+  font-size:12.5px;
+  line-height:1.45;
+}
+.card .tag{
+  display:inline-block;
+  margin-top:7px;
+  font-size:10px;
+  color:var(--texto-fraco);
+  border:1px solid var(--borda-forte);
+  border-radius:3px;
+  padding:1px 5px;
+}
+
+/* --- barra de status --- */
+.status{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size:11.5px;
+  color:var(--texto-fraco);
+  border-top:1px solid var(--borda);
+  margin-top:10px;
+  padding-top:8px;
+  font-family:Consolas,monospace;
+}
+.status .caminho{color:var(--texto)}
+.status button{
+  margin-left:auto;
+  background:var(--cartao);
+  color:var(--texto-fraco);
+  border:1px solid var(--borda-forte);
+  border-radius:4px;
+  padding:3px 9px;
+  font:inherit;
+  cursor:pointer;
+  flex:none;
+}
+.status button:hover{color:var(--texto)}
+
+/* --- caixa de prompt --- */
+.prompt{
+  margin-top:12px;
+  display:flex;
+  align-items:center;
+  border:1px solid var(--borda-forte);
+  border-radius:var(--raio);
+  background:var(--cartao);
+  padding:12px 14px;
+}
+.prompt input{flex:1;background:transparent;border:none;outline:none;color:var(--texto);font:inherit}
+.prompt input::placeholder{color:var(--texto-fraco)}
+.prompt .dica{color:var(--texto-fraco);font-size:11px;font-family:Consolas,monospace}
+
+.escondido{display:none}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ===================== SIDEBAR ===================== -->
+  <aside class="sidebar">
+    <h1>Ambiente<small>meu-ambiente</small></h1>
+    <hr class="regua">
+
+    <div class="visoes">
+      <button data-visao="wiki">WIKI</button>
+      <button data-visao="kanban">Kanban</button>
+    </div>
+
+    <!-- dropdown: abre, escolhe o projeto, fecha -->
+    <div class="caixa-lateral" id="caixa-projetos">
+      <div class="cabecalho">
+        <div class="rotulo">
+          <b>Projetos</b>
+          <span id="projeto-ativo">fishing-rod</span>
+        </div>
+        <button class="chevron" id="btn-projetos" title="abrir lista de projetos">v</button>
+      </div>
+      <div class="corpo dropdown" id="lista-projetos"></div>
+    </div>
+
+    <!-- sessoes do projeto selecionado -->
+    <div class="caixa-lateral" id="caixa-sessoes">
+      <div class="cabecalho">
+        <div class="rotulo"><b>Sessões</b></div>
+      </div>
+      <div class="corpo" id="lista-sessoes"></div>
+    </div>
+  </aside>
+
+  <div class="divisoria"></div>
+
+  <!-- ===================== PAINEL PRINCIPAL ===================== -->
+  <main class="principal">
+
+    <div class="abas" id="abas"></div>
+
+    <section class="caixa">
+      <div class="miolo">
+        <div class="conteudo">
+
+          <!-- ---------- VISAO: CHAT ---------- -->
+          <div class="visao" id="visao-chat"></div>
+
+          <!-- ---------- VISAO: WIKI ---------- -->
+          <div class="visao escondido" id="visao-wiki">
+            <div class="wiki">
+              <div class="wiki-indice">
+                <div class="ativo">Arquitetura</div>
+                <div>Memória da Sessão</div>
+                <div>Agentes e Papéis</div>
+                <div>Comandos</div>
+                <div>Decisões (ADR)</div>
+              </div>
+              <div class="wiki-texto">
+                <h2>Arquitetura</h2>
+                <div class="meta">wiki local · projeto fishing-rod · editada pelo orquestrador-fr</div>
+
+                <h3>A cadeia</h3>
+                <p><code>Ambiente → Projeto → Sessão → Chat</code>. Cada andar acrescenta o próprio nome e delega o resto — não é repasse, é composição.</p>
+
+                <h3>Quem atende o quê</h3>
+                <p>Cada andar só trata os comandos que são dele e passa o resto adiante. A Sessão é o último andar: se parece comando e ninguém atendeu, a responsabilidade de dizer "não conheço" é dela.</p>
+
+                <h3>Camada de pintura</h3>
+                <p>A interface não guarda estado de negócio. Ela pergunta ao núcleo, compara antes e depois, e redesenha. Trocar a interface não deve tocar em nenhuma regra.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- ---------- VISAO: KANBAN ---------- -->
+          <div class="visao escondido" id="visao-kanban">
+            <div class="kanban">
+              <div class="coluna">
+                <div class="titulo"><span>A FAZER</span><span>3</span></div>
+                <div class="card">Abstrair a porta do LLM com vocabulário de sessão viva<span class="tag">arquitetura</span></div>
+                <div class="card">Persistir e retomar sessão (salvar memória + chats)<span class="tag">núcleo</span></div>
+                <div class="card">Renomear projeto pela interface<span class="tag">ui</span></div>
+              </div>
+              <div class="coluna">
+                <div class="titulo"><span>FAZENDO</span><span>2</span></div>
+                <div class="card">Dividir Agente em definição reusável e client vivo<span class="tag">rod-maker</span></div>
+                <div class="card">Tornar a cadeia enviar() assíncrona<span class="tag">núcleo</span></div>
+              </div>
+              <div class="coluna">
+                <div class="titulo"><span>FEITO</span><span>3</span></div>
+                <div class="card">Memória da Sessão como blackboard entre chats<span class="tag">decidido</span></div>
+                <div class="card">Árvore de sessões e chats na sidebar<span class="tag">ui</span></div>
+                <div class="card">Comandos por andar da cadeia<span class="tag">núcleo</span></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- blackboard da sessao, ligado/desligado pela barra de status -->
+        <aside class="memoria escondida" id="memoria"></aside>
+      </div>
+
+      <div class="status">
+        <span class="caminho" id="caminho"></span>
+        <span id="metricas"></span>
+        <button id="btn-memoria">mostrar memória</button>
+      </div>
+
+      <div class="prompt">
+        <input type="text" placeholder="Digite seu prompt...." aria-label="prompt">
+        <span class="dica">/ para comandos</span>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+/* ============ DADOS FALSOS, so para a tela ter o que pintar ============ */
+const PROJETOS = [
+  {
+    nome: "fishing-rod",
+    sessoes: [
+      {
+        nome: "refatorar-sessao",
+        iteracoes: 7,
+        chats: [
+          {nome:"orquestrador-fr", papel:"orquestrador"},
+          {nome:"rod-maker",       papel:"sub-agente"},
+          {nome:"pesquisa-sdk",    papel:"sub-agente"}
+        ],
+        memoria: [
+          {chave:"contrato-enviar", autor:"rod-maker",       valor:"enviar() vira async em toda a cadeia; a Sessão passa a aguardar o client vivo."},
+          {chave:"papel-unico",     autor:"orquestrador-fr", valor:"Uma sessão só admite um orquestrador; sub-agentes podem ser vários."},
+          {chave:"pendencia-wiki",  autor:"pesquisa-sdk",    valor:"Promover a decisão de arquitetura para a página \"Arquitetura\" da WIKI."}
+        ]
+      },
+      {
+        nome: "desenho-da-tui",
+        iteracoes: 12,
+        chats: [{nome:"orquestrador-fr", papel:"orquestrador"}],
+        memoria: [
+          {chave:"card-e-pintura", autor:"orquestrador-fr", valor:"Quais cards estão abertos é estado de tela, não de negócio."}
+        ]
+      }
+    ]
+  },
+  {
+    nome: "tcc-visao-computacional",
+    sessoes: [
+      {
+        nome: "revisao-bibliografica",
+        iteracoes: 3,
+        chats: [{nome:"orquestrador-fr", papel:"orquestrador"}, {nome:"leitor-artigos", papel:"sub-agente"}],
+        memoria: [{chave:"escopo", autor:"orquestrador-fr", valor:"Focar em detecção em vídeo, ignorar segmentação."}]
+      }
+    ]
+  },
+  {
+    nome: "projeto-padrao",
+    sessoes: [
+      {nome:"projeto-padrao-sessao", iteracoes:0, chats:[{nome:"orquestrador-fr", papel:"orquestrador"}], memoria:[]}
+    ]
+  }
+];
+
+// conversas de exemplo por chat
+const MENSAGENS = {
+  "orquestrador-fr": [
+    {tipo:"usuario", autor:"pedro", texto:"quero separar o Agente em definição e client vivo. começa pelo chat do rod-maker."},
+    {tipo:"agente",  autor:"OrquestradorTeste", texto:"Fechado. Abri um chat pro rod-maker nesta mesma sessão e deixei o contrato anotado na memória, pra ele não precisar que você repita nada. Pode acompanhar pela aba dele."},
+    {tipo:"sistema", autor:"comando", texto:"Novo chat criado: [1] rod-maker"},
+    {tipo:"usuario", autor:"pedro", texto:"/chats"},
+    {tipo:"sistema", autor:"comando", texto:"* [0] orquestrador-fr[orquestrador]\n  [1] rod-maker[sub-agente]\n  [2] pesquisa-sdk[sub-agente]"},
+    {tipo:"usuario", autor:"pedro", texto:"e a wiki do projeto, já reflete essa decisão?"},
+    {tipo:"agente",  autor:"OrquestradorTeste", texto:"Ainda não. O rod-maker anotou <code>contrato-enviar</code> na memória há 2 iterações; posso promover isso pra página \"Arquitetura\" da WIKI quando você aprovar."}
+  ],
+  "rod-maker": [
+    {tipo:"sistema", autor:"comando", texto:"Chat aberto pelo orquestrador-fr · memória da sessão carregada (3 anotações)"},
+    {tipo:"agente",  autor:"AgenteRodMaker", texto:"Li <code>contrato-enviar</code> na memória, então já sei o alvo sem você repetir. Vou dividir o Agente em duas peças: a definição (nome, papel, modelo, ferramentas, regras) e o client vivo, que nasce por chat."},
+    {tipo:"usuario", autor:"pedro", texto:"e o que acontece com quem já usa responder()?"},
+    {tipo:"agente",  autor:"AgenteRodMaker", texto:"A definição continua respondendo pela assinatura antiga enquanto o client não existe — assim a TUI não quebra no meio da refatoração. Anotei isso como <code>degrau-de-migracao</code> pro orquestrador ver."}
+  ],
+  "pesquisa-sdk": [
+    {tipo:"usuario", autor:"pedro", texto:"o client do SDK aguenta várias sessões abertas ao mesmo tempo?"},
+    {tipo:"agente",  autor:"AgenteRodMaker", texto:"Levantei o que a documentação diz e deixei o resumo na memória da sessão, em <code>pendencia-wiki</code>. O ponto que importa pro nosso desenho: o loop e o histórico ficam do lado do client, então cada chat precisa do seu."}
+  ]
+};
+
+const MENSAGEM_PADRAO = [
+  {tipo:"sistema", autor:"comando", texto:"Chat novo · nenhuma mensagem ainda"}
+];
+
+/* ============ ESTADO DA TELA (so pintura) ============ */
+let iProjeto = 0, iSessao = 0, iChat = 0, visao = "chat";
+
+const $ = id => document.getElementById(id);
+const projeto = () => PROJETOS[iProjeto];
+const sessao  = () => projeto().sessoes[iSessao];
+const chat    = () => sessao().chats[iChat];
+
+/* ============ PINTURA ============ */
+function pintarProjetos(){
+  $("projeto-ativo").textContent = projeto().nome;
+  $("lista-projetos").innerHTML = PROJETOS.map((p,i) =>
+    `<div class="item ${i===iProjeto?"ativo":""}" data-projeto="${i}">
+       ${p.nome}<span class="contagem">${p.sessoes.length}</span>
+     </div>`).join("");
+}
+
+function pintarSessoes(){
+  $("lista-sessoes").innerHTML = projeto().sessoes.map((s,i) =>
+    `<div class="item ${i===iSessao?"ativo":""}" data-sessao="${i}">
+       ${s.nome}<span class="contagem">${s.chats.length} chats</span>
+     </div>`).join("");
+}
+
+function pintarAbas(){
+  $("abas").innerHTML =
+    sessao().chats.map((c,i) =>
+      `<button class="aba ${i===iChat?"ativa":""}" data-chat="${i}">
+         ${c.nome}<span class="papel">${c.papel}</span>
+       </button>`).join("") +
+    `<button class="aba aba-nova" title="novo chat">+</button>`;
+}
+
+function pintarChat(){
+  const msgs = MENSAGENS[chat().nome] || MENSAGEM_PADRAO;
+  $("visao-chat").innerHTML = msgs.map(m =>
+    `<div class="msg ${m.tipo}">
+       <span class="autor">${m.autor}</span>
+       <span class="texto">${m.texto}</span>
+     </div>`).join("");
+}
+
+function pintarMemoria(){
+  const anotacoes = sessao().memoria;
+  $("memoria").innerHTML = "<h3>MEMÓRIA DA SESSÃO</h3>" + (
+    anotacoes.length
+      ? anotacoes.map(a =>
+          `<div class="anotacao">
+             <span class="chave">${a.chave}</span>
+             <span class="autor">por ${a.autor}</span>
+             <span class="valor">${a.valor}</span>
+           </div>`).join("")
+      : `<div class="vazio">Nenhuma anotação ainda. O que os agentes desta sessão escreverem aparece aqui.</div>`
+  );
+}
+
+function pintarStatus(){
+  $("caminho").textContent = `${projeto().nome} / ${sessao().nome} / ${chat().nome}`;
+  $("metricas").textContent =
+    `| iterações: ${sessao().iteracoes} | memória: ${sessao().memoria.length} anotações`;
+}
+
+function pintarVisao(){
+  document.querySelectorAll(".visao").forEach(v => v.classList.add("escondido"));
+  $("visao-" + visao).classList.remove("escondido");
+  document.querySelectorAll(".visoes button").forEach(b =>
+    b.classList.toggle("ativo", b.dataset.visao === visao));
+}
+
+function pintarTudo(){
+  pintarProjetos(); pintarSessoes(); pintarAbas();
+  pintarChat(); pintarMemoria(); pintarStatus(); pintarVisao();
+}
+
+/* ============ CLIQUES ============ */
+
+// WIKI / Kanban: clicar de novo no botao aceso volta pro chat
+document.querySelectorAll(".visoes button").forEach(botao => {
+  botao.onclick = () => {
+    visao = (visao === botao.dataset.visao) ? "chat" : botao.dataset.visao;
+    pintarVisao();
+  };
+});
+
+// abre e fecha o dropdown de projetos
+$("btn-projetos").onclick = () => $("caixa-projetos").classList.toggle("aberta");
+
+// escolher projeto: troca as sessoes junto e FECHA a caixa
+$("lista-projetos").onclick = e => {
+  const alvo = e.target.closest("[data-projeto]");
+  if (!alvo) return;
+  iProjeto = +alvo.dataset.projeto;
+  iSessao = 0; iChat = 0; visao = "chat";
+  $("caixa-projetos").classList.remove("aberta");
+  pintarTudo();
+};
+
+// escolher sessao: troca as abas de chat junto
+$("lista-sessoes").onclick = e => {
+  const alvo = e.target.closest("[data-sessao]");
+  if (!alvo) return;
+  iSessao = +alvo.dataset.sessao;
+  iChat = 0; visao = "chat";
+  pintarTudo();
+};
+
+// escolher aba (= trocar de chat)
+$("abas").onclick = e => {
+  const alvo = e.target.closest("[data-chat]");
+  if (!alvo) return;
+  iChat = +alvo.dataset.chat;
+  visao = "chat";
+  pintarAbas(); pintarChat(); pintarStatus(); pintarVisao();
+};
+
+// liga/desliga o painel da memoria
+$("btn-memoria").onclick = () => {
+  const m = $("memoria");
+  m.classList.toggle("escondida");
+  $("btn-memoria").textContent =
+    m.classList.contains("escondida") ? "mostrar memória" : "ocultar memória";
+};
+
+pintarTudo();
+</script>
+
+</body>
+</html>
