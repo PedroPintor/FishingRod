@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ambiente de Trabalho — v2 (Nexus Aquisição)</title>
+<style>
+/* ------------------------------------------------------------------
+   MOCKUP v2 - evolucao do interface_ilustrativa.html do Pintor.
+   Mantem a linguagem visual original. Muda o MODELO:
+     1) tela padrao = HOJE (o que trava no humano), nao Kanban
+     2) card = OBJETIVO com etapas dentro, nao etapa solta
+     3) dependencia = ARTEFATO (o card morre quando o artefato existe)
+     4) eixo = momentos humanos (gravar, aprovar, decidir, call)
+     5) funciona so com o orquestrador - agentes sao opcionais
+   Dados falsos, cenario real: ambiente nexus-aquisicao.
+   ------------------------------------------------------------------ */
+:root{
+  --fundo:#1b1b1b; --painel:#202020; --cartao:#262626; --cartao-alto:#2e2e2e;
+  --borda:#3a3a3a; --borda-forte:#4d4d4d; --texto:#d6d6d6; --texto-fraco:#8a8a8a;
+  --usuario:#4ec9d9; --agente:#7bc96f; --sistema:#d7b25a; --destaque:#6ea8fe;
+  --humano:#e0863f; --travado:#c96f6f; --raio:8px;
+  --f-oferta:#b98fe0; --f-instr:#4ec9d9; --f-conteudo:#7bc96f;
+  --f-midia:#6ea8fe; --f-outbound:#d7b25a; --f-comercial:#e08fa8;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--fundo);color:var(--texto);font-family:"Segoe UI",system-ui,sans-serif;
+  font-size:14px;height:100vh;overflow:hidden}
+.app{display:flex;gap:6px;height:100vh;padding:10px}
+
+/* ============ SIDEBAR ============ */
+.sidebar{width:240px;flex:none;display:flex;flex-direction:column;border:1px solid var(--borda);
+  border-radius:var(--raio);padding:14px 12px;background:var(--painel);min-height:0}
+.sidebar h1{font-size:15px;font-weight:600}
+.sidebar h1 small{display:block;font-size:11px;font-weight:400;color:var(--texto-fraco);margin-top:3px}
+.sidebar h1 .meta{display:block;font-size:10.5px;color:var(--destaque);margin-top:4px}
+.regua{border:none;border-top:1px solid var(--borda);margin:12px 0 14px}
+.visoes{display:flex;flex-direction:column}
+.visoes button{text-align:left;background:var(--cartao);color:var(--texto);border:1px solid var(--borda-forte);
+  padding:9px 12px;font:inherit;font-weight:600;cursor:pointer}
+.visoes button:first-child{border-radius:var(--raio) var(--raio) 0 0}
+.visoes button:last-child{border-radius:0 0 var(--raio) var(--raio)}
+.visoes button + button{margin-top:-1px}
+.visoes button:hover{background:var(--cartao-alto)}
+.visoes button.ativo{border-color:var(--destaque);color:#fff;box-shadow:inset 2px 0 0 var(--destaque)}
+.visoes button small{display:block;font-size:10.5px;font-weight:400;color:var(--texto-fraco);margin-top:2px}
+.visoes button .badge{float:right;font-size:10px;background:var(--humano);color:#111;border-radius:9px;
+  padding:1px 7px;font-weight:700}
+.caixa-lateral{margin-top:14px;border:1px solid var(--borda-forte);border-radius:var(--raio);
+  background:var(--cartao);display:flex;flex-direction:column;min-height:0}
+.cabecalho{display:flex;align-items:center;gap:8px;padding:10px 8px 10px 12px}
+.cabecalho .rotulo{flex:1;min-width:0}
+.cabecalho .rotulo b{display:block;font-size:13.5px}
+.cabecalho .rotulo span{display:block;font-size:11px;color:var(--destaque);margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.corpo{border-top:1px solid var(--borda);padding:6px;overflow-y:auto}
+#caixa-cards{flex:1}
+#caixa-cards .corpo{flex:1}
+.item{padding:7px 9px;border-radius:5px;font-size:12.5px;color:var(--texto-fraco);cursor:pointer;
+  border-left:3px solid transparent;line-height:1.35}
+.item:hover{background:var(--cartao-alto);color:var(--texto)}
+.item.ativo{background:var(--cartao-alto);color:var(--destaque);font-weight:600}
+.item .contagem{float:right;font-size:10.5px;color:var(--texto-fraco);font-weight:400}
+.item .sinal{float:right;font-size:10px}
+.divisoria{width:4px;flex:none;background-image:radial-gradient(var(--borda) 1px,transparent 1px);
+  background-size:4px 8px}
+
+/* ============ PRINCIPAL ============ */
+.principal{flex:1;display:flex;flex-direction:column;gap:8px;min-width:0}
+.topo-card{border:1px solid var(--borda);border-radius:var(--raio);background:var(--painel);padding:10px 14px}
+.topo-card .linha1{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.topo-card b{font-size:15px}
+.topo-card .frente{font-size:10.5px;border:1px solid var(--borda-forte);border-radius:3px;padding:1px 7px;
+  color:var(--texto-fraco)}
+.topo-card .objetivo{font-size:11.5px;color:var(--texto-fraco);margin-top:5px;line-height:1.45}
+.artefatos{display:flex;gap:16px;margin-top:9px;flex-wrap:wrap;font-size:11px}
+.artefatos .bloco b{display:block;font-size:9.5px;letter-spacing:1px;color:var(--texto-fraco);
+  font-weight:600;margin-bottom:4px}
+.chip{display:inline-block;border:1px solid var(--borda-forte);border-radius:11px;padding:2px 9px;
+  margin:0 5px 4px 0;font-size:11px;color:var(--texto-fraco)}
+.chip.ok{border-color:var(--agente);color:var(--agente)}
+.chip.falta{border-color:var(--travado);color:var(--travado)}
+.chip.alvo{border-color:var(--destaque);color:var(--destaque)}
+
+/* regua de etapas */
+.regua-etapas{display:flex;align-items:stretch;gap:0;margin-top:11px;overflow-x:auto;padding-bottom:2px}
+.etapa{flex:none;border:1px solid var(--borda);border-radius:5px;padding:5px 10px;font-size:11px;
+  background:var(--cartao);color:var(--texto-fraco);white-space:nowrap;position:relative;cursor:default}
+.etapa + .etapa{margin-left:14px}
+.etapa + .etapa:before{content:"";position:absolute;left:-14px;top:50%;width:14px;
+  border-top:1px solid var(--borda-forte)}
+.etapa.ok{color:var(--agente);border-color:#3d5c39}
+.etapa.andando{color:var(--destaque);border-color:var(--destaque);background:#1e2635}
+.etapa.espera{color:var(--travado);border-color:var(--travado);border-style:dashed}
+.etapa.humano{color:var(--humano);border-color:var(--humano);background:#2a1f14;font-weight:600}
+.etapa .quem{display:block;font-size:9px;letter-spacing:.5px;opacity:.75;margin-top:2px}
+
+/* abas */
+.abas{display:flex;border:1px solid var(--borda);border-radius:var(--raio);padding:6px;
+  background:var(--painel);overflow-x:auto}
+.aba{background:transparent;color:var(--texto-fraco);border:1px solid transparent;border-radius:6px;
+  padding:8px 16px;font:inherit;cursor:pointer;white-space:nowrap}
+.aba:hover{background:var(--cartao)}
+.aba.ativa{background:var(--cartao);border-color:var(--borda-forte);color:var(--texto)}
+.aba .papel{font-size:10px;color:var(--texto-fraco);margin-left:6px;border:1px solid var(--borda-forte);
+  border-radius:3px;padding:1px 5px}
+.aba-nova{margin-left:auto;padding:8px 14px;font-size:16px;line-height:1;flex:none}
+
+.caixa{flex:1;display:flex;flex-direction:column;border:1px solid var(--borda);border-radius:var(--raio);
+  background:var(--painel);padding:14px;min-height:0}
+.miolo{flex:1;display:flex;gap:12px;min-height:0}
+.conteudo{flex:1;overflow-y:auto;padding-right:6px;min-width:0}
+.escondido{display:none}
+</style>
+<style>
+/* chat */
+.msg{margin-bottom:14px;line-height:1.55}
+.msg .autor{font-weight:600}
+.msg.usuario .autor{color:var(--usuario)}
+.msg.agente .autor{color:var(--agente)}
+.msg.sistema .autor{color:var(--sistema)}
+.msg.sistema .texto{color:var(--sistema);white-space:pre-wrap;font-family:Consolas,monospace;font-size:12.5px}
+.msg .texto{display:block;margin-top:3px}
+.msg code{background:var(--cartao);padding:1px 5px;border-radius:3px;font-size:12px}
+.acao-humana{border:1px solid var(--humano);background:#2a1f14;border-radius:6px;padding:10px 12px;
+  margin:6px 0 14px;font-size:12.5px;color:#e8c9a8}
+.acao-humana b{color:var(--humano)}
+.acao-humana .btns{margin-top:8px;display:flex;gap:8px}
+.acao-humana button{background:var(--cartao);color:var(--texto);border:1px solid var(--borda-forte);
+  border-radius:5px;padding:5px 12px;font:inherit;font-size:12px;cursor:pointer}
+.acao-humana button.sim{border-color:var(--humano);color:var(--humano);font-weight:600}
+/* memoria */
+.memoria{width:265px;flex:none;border-left:1px solid var(--borda);padding-left:12px;overflow-y:auto;font-size:12px}
+.memoria.escondida{display:none}
+.memoria h3{font-size:10px;letter-spacing:1px;color:var(--texto-fraco);margin-bottom:10px}
+.anotacao{background:var(--cartao);border:1px solid var(--borda);border-radius:6px;padding:8px 10px;margin-bottom:8px}
+.anotacao .chave{color:var(--destaque);font-weight:600;font-family:Consolas,monospace}
+.anotacao .autor{display:block;color:var(--texto-fraco);font-size:10.5px;margin:3px 0 5px}
+.anotacao .valor{line-height:1.5}
+.vazio{padding:10px;font-size:11.5px;color:var(--texto-fraco);line-height:1.5}
+/* HOJE */
+.hoje{display:flex;flex-direction:column;gap:16px}
+.grupo > .titulo{font-size:10px;letter-spacing:1.4px;color:var(--texto-fraco);margin-bottom:8px}
+.grupo.humano > .titulo{color:var(--humano)}
+.grupo.travado > .titulo{color:var(--travado)}
+.pend{display:flex;align-items:center;gap:10px;background:var(--cartao);border:1px solid var(--borda-forte);
+  border-left:3px solid var(--humano);border-radius:6px;padding:10px 12px;margin-bottom:7px;cursor:pointer}
+.pend:hover{background:var(--cartao-alto);border-color:var(--destaque)}
+.pend .tipo{font-size:9.5px;letter-spacing:1px;border:1px solid var(--humano);color:var(--humano);
+  border-radius:3px;padding:2px 7px;flex:none;font-weight:600}
+.pend .txt{flex:1;font-size:13px;line-height:1.35}
+.pend .card-ref{font-size:11px;color:var(--texto-fraco)}
+.pend.andou{border-left-color:var(--agente);cursor:default}
+.pend.andou .tipo{border-color:var(--agente);color:var(--agente)}
+.pend.trv{border-left-color:var(--travado)}
+.pend.trv .tipo{border-color:var(--travado);color:var(--travado)}
+.nota-modelo{border-left:3px solid var(--sistema);background:var(--cartao);padding:9px 12px;
+  border-radius:0 6px 6px 0;font-size:11.5px;color:#bdbdbd;line-height:1.5;margin-top:6px}
+.nota-modelo b{color:var(--sistema)}
+</style>
+<style>
+/* CARDS */
+.grade{display:flex;gap:12px;height:100%;overflow-x:auto;padding-bottom:6px}
+.coluna{width:250px;flex:none;background:var(--fundo);border:1px solid var(--borda);border-radius:var(--raio);
+  padding:10px;display:flex;flex-direction:column;gap:8px;min-height:0;overflow-y:auto}
+.coluna > .titulo{font-size:10.5px;letter-spacing:.8px;color:var(--texto-fraco);display:flex;
+  justify-content:space-between;flex:none}
+.card{background:var(--cartao);border:1px solid var(--borda-forte);border-left:3px solid var(--borda-forte);
+  border-radius:6px;padding:10px;font-size:12.5px;line-height:1.4;cursor:pointer;flex:none}
+.card:hover{background:var(--cartao-alto);border-color:var(--destaque)}
+.card.oferta{border-left-color:var(--f-oferta)} .card.instr{border-left-color:var(--f-instr)}
+.card.conteudo{border-left-color:var(--f-conteudo)} .card.midia{border-left-color:var(--f-midia)}
+.card.outbound{border-left-color:var(--f-outbound)} .card.comercial{border-left-color:var(--f-comercial)}
+.card .prod{display:block;margin-top:7px;font-size:10.5px;color:var(--destaque)}
+.card .est{display:block;margin-top:5px;font-size:10.5px}
+.card .est.voce{color:var(--humano)} .card .est.trv{color:var(--travado)}
+.card .est.and{color:var(--agente)} .card .est.pronto{color:var(--texto-fraco)}
+.card .barra{display:flex;gap:2px;margin-top:8px}
+.card .barra i{height:3px;flex:1;background:var(--borda-forte);border-radius:2px}
+.card .barra i.ok{background:var(--agente)} .card .barra i.hum{background:var(--humano)}
+.card .barra i.trv{background:var(--travado)}
+/* NUMEROS + WIKI */
+.tabela{width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:18px}
+.tabela th,.tabela td{border:1px solid var(--borda);padding:7px 9px;text-align:left}
+.tabela th{color:var(--texto-fraco);font-size:10.5px;letter-spacing:.6px;font-weight:600}
+.tabela td.n{font-family:Consolas,monospace}
+h2.sec{font-size:15px;margin:4px 0 10px}
+h3.sec{font-size:12px;color:var(--destaque);margin:16px 0 7px}
+.wiki{display:flex;gap:18px;height:100%}
+.wiki-indice{width:210px;flex:none;border-right:1px solid var(--borda);padding-right:12px;overflow-y:auto}
+.wiki-indice .titulinho{font-size:10px;letter-spacing:1px;color:var(--texto-fraco);padding:0 8px 8px}
+.wiki-indice .pagina{padding:7px 8px;border-radius:5px;color:var(--texto-fraco);cursor:pointer;font-size:12.5px}
+.wiki-indice .pagina:hover{background:var(--cartao);color:var(--texto)}
+.wiki-indice .pagina.ativo{background:var(--cartao);color:var(--texto);font-weight:600}
+.wiki-texto{flex:1;line-height:1.7;max-width:76ch;overflow-y:auto;padding-right:8px}
+.wiki-texto h2{font-size:18px;margin-bottom:4px}
+.wiki-texto .meta{color:var(--texto-fraco);font-size:11px;margin-bottom:16px}
+.wiki-texto h3{font-size:13px;margin:18px 0 6px;color:var(--destaque)}
+.wiki-texto p,.wiki-texto li{color:#c2c2c2}
+.wiki-texto p{margin-bottom:10px}
+.wiki-texto ul{margin:0 0 12px 18px}
+.wiki-texto li{margin-bottom:5px}
+/* status + prompt */
+.status{display:flex;align-items:center;gap:10px;font-size:11.5px;color:var(--texto-fraco);
+  border-top:1px solid var(--borda);margin-top:10px;padding-top:8px;font-family:Consolas,monospace}
+.status .caminho{color:var(--texto)}
+.status button{background:var(--cartao);color:var(--texto-fraco);border:1px solid var(--borda-forte);
+  border-radius:4px;padding:3px 9px;font:inherit;cursor:pointer;flex:none;margin-left:auto}
+.status button:hover{color:var(--texto)}
+.prompt{margin-top:12px;display:flex;align-items:center;border:1px solid var(--borda-forte);
+  border-radius:var(--raio);background:var(--cartao);padding:12px 14px}
+.prompt input{flex:1;background:transparent;border:none;outline:none;color:var(--texto);font:inherit}
+.prompt input::placeholder{color:var(--texto-fraco)}
+.prompt .dica{color:var(--texto-fraco);font-size:11px;font-family:Consolas,monospace}
+</style>
+<style>
+/* ---- v3: as tres naturezas de tarefa ---- */
+:root{--n-exec:#6ea8fe;--n-analise:#d7b25a;--n-disc:#b98fe0}
+.selo-nat{font-size:9.5px;letter-spacing:1.2px;font-weight:700;border-radius:3px;padding:2px 8px;
+  border:1px solid var(--borda-forte);color:var(--texto-fraco)}
+.selo-nat.execucao{border-color:var(--n-exec);color:var(--n-exec)}
+.selo-nat.analise{border-color:var(--n-analise);color:var(--n-analise)}
+.selo-nat.discovery{border-color:var(--n-disc);color:var(--n-disc)}
+.selo-nat.recorrente{border-color:var(--agente);color:var(--agente)}
+.destino{font-size:10.5px;color:var(--texto-fraco);margin-top:7px}
+.destino b{color:var(--texto)}
+.leitura{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.leitura .dado{border:1px solid var(--borda);background:var(--cartao);border-radius:6px;padding:6px 10px;
+  font-size:11px;min-width:112px}
+.leitura .dado span{display:block;font-size:9.5px;letter-spacing:.8px;color:var(--texto-fraco);margin-bottom:3px}
+.leitura .dado b{font-family:Consolas,monospace;font-size:13px}
+.leitura .dado.ruim b{color:var(--travado)} .leitura .dado.bom b{color:var(--agente)}
+.pend.dec{border-left-color:var(--n-analise)}
+.pend.dec .tipo{border-color:var(--n-analise);color:var(--n-analise)}
+.veredito{border:1px solid var(--n-analise);background:#2a2415;border-radius:6px;padding:10px 12px;
+  margin:6px 0 14px;font-size:12.5px;color:#e6d5a8}
+.veredito b{color:var(--n-analise)}
+.veredito .btns{margin-top:8px;display:flex;gap:8px}
+.veredito button{background:var(--cartao);color:var(--texto);border:1px solid var(--borda-forte);
+  border-radius:5px;padding:5px 12px;font:inherit;font-size:12px;cursor:pointer}
+.veredito button.sim{border-color:var(--n-analise);color:var(--n-analise);font-weight:600}
+.diretriz{border:1px solid var(--n-disc);background:#241d2b;border-radius:6px;padding:10px 12px;
+  margin:6px 0 14px;font-size:12.5px;color:#d9c7ea}
+.diretriz b{color:var(--n-disc)}
+.diretriz .btns{margin-top:8px;display:flex;gap:8px}
+.diretriz button{background:var(--cartao);color:var(--texto);border:1px solid var(--borda-forte);
+  border-radius:5px;padding:5px 12px;font:inherit;font-size:12px;cursor:pointer}
+.diretriz button.sim{border-color:var(--n-disc);color:var(--n-disc);font-weight:600}
+/* paleta de comandos */
+.paleta{position:absolute;bottom:64px;right:14px;width:430px;background:var(--painel);
+  border:1px solid var(--borda-forte);border-radius:var(--raio);padding:12px;z-index:9;
+  box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.paleta.escondida{display:none}
+.paleta h4{font-size:10px;letter-spacing:1.2px;color:var(--texto-fraco);margin:0 0 8px}
+.paleta .cmd{display:flex;gap:9px;align-items:baseline;padding:5px 7px;border-radius:5px;font-size:12px}
+.paleta .cmd:hover{background:var(--cartao)}
+.paleta .cmd code{font-family:Consolas,monospace;color:var(--destaque);min-width:88px}
+.paleta .cmd small{color:var(--texto-fraco);font-size:10.5px}
+.paleta .cmd .conf{margin-left:auto;font-size:9.5px;color:var(--humano);border:1px solid var(--humano);
+  border-radius:3px;padding:1px 6px;white-space:nowrap}
+.paleta .grupo-cmd{margin-bottom:10px}
+.caixa{position:relative}
+.prompt .dica{cursor:pointer}
+.prompt .dica:hover{color:var(--destaque)}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <h1>Ambiente<small>nexus-aquisicao</small>
+      <span class="meta">meta +R$42k MRR · 6 meses · R$7k/mes</span></h1>
+    <hr class="regua">
+    <div class="visoes">
+      <button data-visao="hoje">HOJE<span class="badge" id="badge-hoje">4</span><small>o que trava em voce</small></button>
+      <button data-visao="cards">CARDS<small>objetivos vivos</small></button>
+      <button data-visao="numeros">NUMEROS<small>CPL, CAC, gasto</small></button>
+      <button data-visao="wiki">WIKI<small>o que vale em todo card</small></button>
+    </div>
+    <div class="caixa-lateral">
+      <div class="cabecalho"><div class="rotulo"><b>Frente</b><span id="frente-ativa">midia</span></div></div>
+      <div class="corpo" id="lista-frentes"></div>
+    </div>
+    <div class="caixa-lateral" id="caixa-cards">
+      <div class="cabecalho"><div class="rotulo"><b>Cards da frente</b></div></div>
+      <div class="corpo" id="lista-cards"></div>
+    </div>
+  </aside>
+  <div class="divisoria"></div>
+  <main class="principal">
+    <div class="topo-card" id="topo"></div>
+    <div class="abas" id="abas"></div>
+    <section class="caixa">
+      <div class="miolo">
+        <div class="conteudo">
+          <div class="visao" id="visao-card"></div>
+          <div class="visao escondido" id="visao-hoje"></div>
+          <div class="visao escondido" id="visao-cards"></div>
+          <div class="visao escondido" id="visao-numeros"></div>
+          <div class="visao escondido" id="visao-wiki"></div>
+        </div>
+        <aside class="memoria escondida" id="memoria"></aside>
+      </div>
+      <div class="status">
+        <span class="caminho" id="caminho"></span><span id="metricas"></span>
+        <button id="btn-memoria">mostrar memoria</button>
+      </div>
+      <div class="paleta escondida" id="paleta"></div>
+      <div class="prompt">
+        <input type="text" placeholder="Fale com o orquestrador...">
+        <span class="dica" id="dica-cmd">/ para comandos</span>
+      </div>
+    </section>
+  </main>
+</div>
+<script>
+/* ==========================================================
+   v3 - acrescenta AS TRES NATUREZAS DE TAREFA:
+     execucao  -> escreve no MUNDO (conexoes)   -> artefato = peca
+     analise   -> escreve uma DECISAO (painel)  -> artefato = veredito
+     discovery -> escreve a DIRETRIZ (wiki)     -> artefato = regra nova
+   Os 10 verbos do Joao NAO viram tipos de card: viram COMANDOS (/).
+   ========================================================== */
+const FRENTES = [
+  {id:"oferta",    nome:"F1 · oferta e mensagem"},
+  {id:"instr",     nome:"F2 · instrumentacao"},
+  {id:"conteudo",  nome:"F3 · conteudo"},
+  {id:"midia",     nome:"F4 · midia paga"},
+  {id:"outbound",  nome:"F5 · outbound"},
+  {id:"comercial", nome:"F6 · comercial e ticket"}
+];
+
+const NATUREZAS = {
+  execucao: {rotulo:"EXECUCAO", destino:"escreve no MUNDO (via conexoes)", art:"peca no mundo"},
+  analise:  {rotulo:"ANALISE",  destino:"escreve uma DECISAO (e ela vai pro painel)", art:"veredito"},
+  discovery:{rotulo:"DISCOVERY",destino:"escreve a DIRETRIZ (e ela vira WIKI)", art:"regra nova que passa a valer em todo card"}
+};
+
+/* ---- os verbos: comandos, nao tipos de card ---- */
+const COMANDOS = [
+ {grupo:"EXECUCAO — produz peca", itens:[
+   {v:"/criar",     d:"criativo, campanha, pagina, video", conf:""},
+   {v:"/escrever",  d:"copy, roteiro, sequencia, artigo", conf:""},
+   {v:"/preparar",  d:"lista, fila de linkedin, briefing de call", conf:""},
+   {v:"/subir",     d:"campanha, pagina, post", conf:"gasta dinheiro"},
+   {v:"/enviar",    d:"sequencia de e-mail, mensagem", conf:"vai pra terceiro"},
+   {v:"/responder", d:"lead, DM, inbox", conf:"vai pra terceiro"},
+   {v:"/cortar",    d:"video (sem API - voce aprova o lote)", conf:"humano"},
+   {v:"/gravar",    d:"reserva o bloco (so voce faz)", conf:"humano"}]},
+ {grupo:"ANALISE — produz decisao", itens:[
+   {v:"/analisar",  d:"criativo, conjunto, canal, cohort", conf:""},
+   {v:"/verificar", d:"tracking, funil, entrega de e-mail", conf:""},
+   {v:"/decidir",   d:"fecha a analise: cortar, escalar, manter", conf:"decisao sua"}]},
+ {grupo:"DISCOVERY — produz diretriz", itens:[
+   {v:"/discovery", d:"estrategia, ICP, estilo de LP, estilo de video", conf:""},
+   {v:"/pesquisar", d:"mercado, concorrente, canal novo", conf:""},
+   {v:"/promover",  d:"transforma o achado em diretriz na WIKI", conf:"aprovacao sua"}]}
+];
+
+const CARDS = [
+{
+  id:"campanha-clinicas", frente:"midia", natureza:"execucao",
+  titulo:"Campanha de oferta para donos de clinica",
+  objetivo:"Campanha no ar medindo CPL por conjunto, cohort servico local ticket alto. Missao do mes: descobrir CPL, nao fechar cliente.",
+  produz:"campanha no ar medindo CPL",
+  consome:[{o:"oferta e angulo fechados",de:"oferta-clinicas",ok:true},
+           {o:"6 variacoes de criativo",de:"leva-videos",ok:true},
+           {o:"url da LP no ar",de:"lp-clinicas",ok:false},
+           {o:"tracking e UTM ativos",de:"instrumentacao",ok:false}],
+  estado:"travado", espera:"«url da LP no ar» — card lp-clinicas",
+  etapas:[
+    {n:"oferta e angulo", q:"agente", e:"ok"},
+    {n:"copy dos anuncios", q:"/escrever", e:"ok"},
+    {n:"criativo (6 variacoes)", q:"/criar + Kairogen", e:"ok"},
+    {n:"GRAVAR", q:"VOCE", e:"ok", humano:true},
+    {n:"aprovar criativos", q:"VOCE", e:"agora", humano:true},
+    {n:"LP", q:"outro card", e:"espera"},
+    {n:"tracking / UTM", q:"Pintor", e:"andando"},
+    {n:"subir campanha", q:"/subir + Meta", e:"parado"},
+    {n:"ler CPL por conjunto", q:"/analisar", e:"parado"}
+  ],
+  agentes:[{nome:"orquestrador",papel:"orquestrador"},{nome:"copy-de-anuncio",papel:"agente"},
+           {nome:"arquiteto-meta",papel:"agente"}],
+  memoria:[
+    {chave:"cohort-e-piso", autor:"orquestrador", valor:"Cohort clinicas, ancoragem R$4.000 (canal pago). CPL teto R$240 - vem da WIKI, nao repetir."},
+    {chave:"provas-liberadas", autor:"orquestrador", valor:"So Dr. Marcelo e AmenBreak autorizados para uso publico."},
+    {chave:"travado-por", autor:"orquestrador", valor:"Espera «url da LP no ar». Destrava sozinho quando o card lp-clinicas fechar."}
+  ]
+},
+{
+  id:"revisao-semanal", frente:"midia", natureza:"analise", recorrente:true,
+  titulo:"Revisao semanal de canal — cortar ou escalar",
+  objetivo:"Ler CPL e CAC por canal e por cohort e fechar UMA decisao: cortar, escalar ou manter. Nao produz peca: produz decisao.",
+  produz:"decisao registrada da semana",
+  consome:[{o:"dados dos conectores (Meta, GA4, HubSpot)",de:"conexoes",ok:true}],
+  estado:"voce", espera:"",
+  le:[{r:"gasto no periodo",v:"R$ 1.180",c:""},{r:"leads",v:"14",c:""},
+      {r:"CPL real",v:"R$ 310",c:"ruim"},{r:"teto de CPL",v:"R$ 240",c:""},
+      {r:"dias rodando",v:"32",c:"ruim"},{r:"MQL",v:"2",c:""}],
+  etapas:[
+    {n:"puxar dados", q:"/analisar + conectores", e:"ok"},
+    {n:"cruzar com a regra de corte", q:"agente", e:"ok"},
+    {n:"recomendar", q:"agente", e:"ok"},
+    {n:"DECIDIR", q:"VOCE", e:"agora", humano:true},
+    {n:"registrar no painel", q:"agente", e:"parado"}
+  ],
+  agentes:[{nome:"orquestrador",papel:"orquestrador"},{nome:"analista-de-canal",papel:"agente"}],
+  memoria:[
+    {chave:"card-que-nao-fecha", autor:"orquestrador", valor:"Card recorrente: reabre toda segunda com dados novos. Ele existe para a regra de corte valer mesmo quando doer - e nao depender da sua memoria."},
+    {chave:"regra-aplicada", autor:"analista-de-canal", valor:"30 dias + R$1.000 sem lead dentro da meta de CPL = cortar. Esta semana o criterio foi atingido pela primeira vez."}
+  ]
+},
+{
+  id:"discovery-lp", frente:"conteudo", natureza:"discovery",
+  titulo:"Discovery: qual e o estilo de landing page da Nexus",
+  objetivo:"Responder de uma vez o padrao de LP que a Nexus usa - e escrever isso como diretriz, para toda pagina futura nascer sabendo.",
+  produz:"diretriz na WIKI: padrao de LP",
+  consome:[{o:"dados das paginas atuais",de:"conexoes",ok:true},
+           {o:"referencias de mercado",de:"pesquisa",ok:true}],
+  estado:"voce", espera:"",
+  hipotese:"Pagina dedicada por criativo, com o titulo repetindo a frase exata do gancho, converte mais que a home - mesmo com menos volume.",
+  fontes:["GA4: 2 paginas comparadas, 41 dias","teardown de 6 concorrentes","conversa com Dr. Marcelo (2026-07)"],
+  etapas:[
+    {n:"levantar o que ja temos", q:"/analisar", e:"ok"},
+    {n:"pesquisar fora", q:"/pesquisar", e:"ok"},
+    {n:"formular a hipotese", q:"agente", e:"ok"},
+    {n:"APROVAR A DIRETRIZ", q:"VOCE", e:"agora", humano:true},
+    {n:"promover para a WIKI", q:"/promover + bibliotecario", e:"parado"}
+  ],
+  agentes:[{nome:"orquestrador",papel:"orquestrador"},{nome:"analista-de-conversao",papel:"agente"}],
+  memoria:[
+    {chave:"alcance-da-resposta", autor:"orquestrador", valor:"Este virou card proprio (e nao aba dentro da campanha) porque a resposta vale para TODA LP futura, nao so para a de clinicas. Essa e a regra: se vale so para este objetivo, e aba; se vale para todos, e card."},
+    {chave:"criterio-de-fechamento", autor:"orquestrador", valor:"Discovery so fecha com diretriz escrita que muda o que a gente faz. Se terminar e nada mudar, era conversa - e o card nao fecha."}
+  ]
+},
+{
+  id:"lp-clinicas", frente:"conteudo", natureza:"execucao",
+  titulo:"LP da oferta de diagnostico para clinicas",
+  objetivo:"Pagina dedicada que promete a mesma coisa que o anuncio, com formulario ligado ao CRM.",
+  produz:"url da LP no ar",
+  consome:[{o:"copy aprovada",de:"campanha-clinicas",ok:true},
+           {o:"padrao de LP (diretriz)",de:"discovery-lp",ok:false},
+           {o:"site no ar",de:"instrumentacao",ok:false}],
+  estado:"andando", espera:"",
+  etapas:[
+    {n:"copy da pagina", q:"/escrever", e:"ok"},
+    {n:"montar pagina", q:"/criar + WordPress", e:"andando"},
+    {n:"formulario -> CRM", q:"Pintor", e:"parado"},
+    {n:"aprovar e publicar", q:"VOCE", e:"parado", humano:true}
+  ],
+  agentes:[{nome:"orquestrador",papel:"orquestrador"},{nome:"copy-de-pagina",papel:"agente"}],
+  memoria:[
+    {chave:"origem-do-card", autor:"orquestrador", valor:"Nao foi pedido por voce: nasceu dentro da campanha, quando o copy viu que a home nao promete diagnostico com as mesmas palavras do anuncio."},
+    {chave:"quem-espera", autor:"orquestrador", valor:"campanha-clinicas esta parada esperando o artefato desta pagina."}
+  ]
+},
+{
+  id:"leva-videos", frente:"conteudo", natureza:"execucao",
+  titulo:"Leva de videos da semana (1 dia de gravacao)",
+  objetivo:"Um dia de gravacao vira 6-10 videos longos, 40-60 cortes, criativos de midia e artigos. Um material, tres frentes.",
+  produz:"acervo bruto + 6 criativos + 40 cortes",
+  consome:[{o:"pauta e roteiros aprovados",de:"proprio card",ok:true}],
+  estado:"voce", espera:"",
+  etapas:[
+    {n:"pauta", q:"agente", e:"ok"},
+    {n:"roteiro", q:"/escrever", e:"ok"},
+    {n:"portao de qualidade", q:"revisor", e:"ok"},
+    {n:"aprovar 4 roteiros", q:"VOCE", e:"agora", humano:true},
+    {n:"GRAVAR bloco de terca", q:"VOCE", e:"proximo", humano:true},
+    {n:"cortes", q:"/cortar + seu ok", e:"parado"},
+    {n:"publicar", q:"/subir + IG/YT", e:"parado"}
+  ],
+  agentes:[{nome:"orquestrador",papel:"orquestrador"},{nome:"radar-de-pauta",papel:"agente"},
+           {nome:"revisor",papel:"portao"}],
+  memoria:[
+    {chave:"regra-do-portao", autor:"orquestrador", valor:"Voce nunca grava algo que nao passou pelo revisor. Reprovar antes custa 5 minutos; depois custa um dia."},
+    {chave:"reaproveitamento", autor:"orquestrador", valor:"2 dos 6 criativos da campanha saem desta leva. Nada aqui pede regravacao."}
+  ]
+},
+{
+  id:"instrumentacao", frente:"instr", natureza:"execucao",
+  titulo:"Instrumentacao: CRM, site e tracking",
+  objetivo:"Tornar o funil legivel por dado. Sem isso, nenhum real de midia entra.",
+  produz:"tracking e UTM ativos + funil legivel por API",
+  consome:[],
+  estado:"andando", espera:"",
+  etapas:[
+    {n:"HubSpot + 11 campos do ICP", q:"Pintor", e:"ok"},
+    {n:"dominio e caixas (aquecimento)", q:"Pintor", e:"andando"},
+    {n:"site no ar", q:"Pintor", e:"andando"},
+    {n:"GTM / GA4 / pixels", q:"Pintor", e:"parado"},
+    {n:"conectores MCP", q:"Pintor", e:"parado"}
+  ],
+  agentes:[{nome:"orquestrador",papel:"orquestrador"}],
+  memoria:[
+    {chave:"caminho-critico", autor:"orquestrador", valor:"Aquecimento de caixa leva 2-3 semanas de calendario. Atrasar 1 dia aqui atrasa 1 dia o outbound."}
+  ]
+},
+{
+  id:"verificar-tracking", frente:"instr", natureza:"analise",
+  titulo:"Verificar se o tracking esta contando certo",
+  objetivo:"Conferir se evento, UTM e CRM contam a mesma coisa. Produz um veredito: confiavel ou nao.",
+  produz:"veredito: dado confiavel?",
+  consome:[{o:"GA4 + CRM + Meta",de:"conexoes",ok:true}],
+  estado:"andando", espera:"",
+  le:[{r:"leads no GA4",v:"17",c:""},{r:"leads no CRM",v:"14",c:"ruim"},
+      {r:"divergencia",v:"18%",c:"ruim"},{r:"UTM preenchido",v:"11/14",c:""}],
+  etapas:[
+    {n:"cruzar as tres fontes", q:"/verificar", e:"ok"},
+    {n:"achar a origem da diferenca", q:"agente", e:"andando"},
+    {n:"veredito", q:"VOCE", e:"parado", humano:true}
+  ],
+  agentes:[{nome:"orquestrador",papel:"orquestrador"}],
+  memoria:[
+    {chave:"por-que-importa", autor:"orquestrador", valor:"Erro de medicao contamina LTV e CAC. Decidir com dado errado e pior que decidir sem dado."}
+  ]
+},
+{
+  id:"lista-b2b", frente:"outbound", natureza:"execucao",
+  titulo:"Primeira lista de ICP B2B industria",
+  objetivo:"200 empresas dentro do ICP, com sequencia escrita, prontas para disparo quando as caixas aquecerem.",
+  produz:"lista de 200 + sequencia aprovada",
+  consome:[{o:"ICP e oferta fechados",de:"oferta-clinicas",ok:true},
+           {o:"caixas aquecidas",de:"instrumentacao",ok:false}],
+  estado:"travado", espera:"«caixas aquecidas» — card instrumentacao",
+  etapas:[
+    {n:"criterios de lista", q:"agente", e:"ok"},
+    {n:"montar lista", q:"/preparar + Snov.io", e:"andando"},
+    {n:"sequencia de e-mail", q:"/escrever", e:"parado"},
+    {n:"aprovar e disparar", q:"/enviar + seu ok", e:"parado", humano:true}
+  ],
+  agentes:[{nome:"orquestrador",papel:"orquestrador"}],
+  memoria:[
+    {chave:"licao-antiga", autor:"orquestrador", valor:"Ja tentamos cold email e nao deu. O sinal nao e canal ruim - e oferta e lista sem ICP."}
+  ]
+},
+{
+  id:"oferta-clinicas", frente:"oferta", natureza:"discovery",
+  titulo:"Oferta, ICP e narrativa da Nexus",
+  objetivo:"Responder o que a Nexus vende, por quanto e pra quem - e virar diretriz da qual todo card se alimenta.",
+  produz:"diretriz na WIKI: ICP, oferta e narrativa",
+  consome:[],
+  estado:"pronto", espera:"",
+  hipotese:"CONCLUIDO - a diretriz existe e ja esta em vigor: 3 paginas na WIKI, lidas por todo agente antes de escrever qualquer coisa.",
+  fontes:["4 clientes atuais","auditoria da wiki (12/08)","sessao de discovery com o Joao"],
+  etapas:[
+    {n:"ICP e cortes duros", q:"/discovery", e:"ok"},
+    {n:"escada de oferta e precos", q:"agente", e:"ok"},
+    {n:"narrativa e 7 mensagens", q:"agente", e:"ok"},
+    {n:"aprovar a diretriz", q:"VOCE", e:"ok", humano:true},
+    {n:"promover para a WIKI", q:"/promover", e:"ok"}
+  ],
+  agentes:[{nome:"orquestrador",papel:"orquestrador"}],
+  memoria:[
+    {chave:"o-loop", autor:"orquestrador", valor:"Este card fechou e virou WIKI. E por isso que todo card novo ja nasce sabendo - voce nao repete briefing. Discovery e o que faz o ambiente aprender."}
+  ]
+}
+];
+
+const ANDOU_SOZINHO = [
+  {tipo:"EXEC", txt:"6 variacoes de criativo geradas na marca, esperando sua aprovacao", card:"campanha-clinicas"},
+  {tipo:"EXEC", txt:"copy da LP escrita repetindo a frase exata do gancho do anuncio", card:"lp-clinicas"},
+  {tipo:"ANALISE", txt:"dados da semana puxados dos conectores e cruzados com a regra de corte", card:"revisao-semanal"},
+  {tipo:"DISC", txt:"teardown de 6 concorrentes + comparativo das 2 paginas atuais concluido", card:"discovery-lp"},
+  {tipo:"MCP", txt:"HubSpot: 3 leads novos por indicacao, 1 virou MQL", card:"revisao-semanal"}
+];
+
+/* ---- decisoes esperando voce: sai dos cards de natureza analise/discovery ---- */
+const DECISOES = [
+  {card:"revisao-semanal", tipo:"CORTAR?",
+   txt:"Meta · clinicas: 32 dias, R$1.180 gastos, CPL R$310 contra teto de R$240.",
+   rec:"Recomendacao: cortar. A regra foi atingida."},
+  {card:"discovery-lp", tipo:"DIRETRIZ",
+   txt:"Padrao de LP: pagina dedicada por criativo, titulo repetindo a frase exata do gancho.",
+   rec:"Aprovar vira regra para toda pagina futura."},
+  {card:"verificar-tracking", tipo:"VEREDITO",
+   txt:"GA4 conta 17 leads, CRM conta 14 — 18% de divergencia.",
+   rec:"Decidir se o dado ja e confiavel para basear corte de verba."}
+];
+
+const WIKI = [
+ {titulo:"ICP da Nexus", meta:"wiki do ambiente · lida por todo agente antes de escrever qualquer coisa",
+  html:`<h3>Pre-condicoes eliminatorias</h3><ul>
+   <li>PMF validado - se o produto ainda nao vende, midia so acelera o problema</li>
+   <li>Decisor acessivel - stakeholder enrolado mata o projeto</li>
+   <li>Verba minima de R$7.000/mes quando o escopo envolve midia</li></ul>
+   <h3>Cohorts</h3><ul>
+   <li><b>Servico local ticket alto</b> (clinicas) - prova: Dr. Marcelo - canal: Meta + Search de intencao</li>
+   <li><b>B2B industria/distribuicao</b> - prova: ARPE, PotePlaste - canal: cold email + LinkedIn manual</li>
+   <li><b>E-commerce</b> - prova: AmenBreak - canal: conteudo e autoridade</li></ul>
+   <h3>Anti-ICP</h3><p>Quem nao validou PMF e quem nao decide. Nao importa a verba.</p>`},
+ {titulo:"Oferta e regua de preco", meta:"wiki do ambiente · usada em proposta, copy e call",
+  html:`<h3>As 4 formas sao uma escada, nao 4 produtos</h3><ul>
+   <li>Consultoria/treinamento - porta de entrada</li>
+   <li>Implementacao (CRM, site) - porta de entrada com infra</li>
+   <li><b>Recorrente - o alvo. E o MRR.</b></li>
+   <li>Variavel - ferramenta de fechamento, nao produto</li></ul>
+   <h3>Ancoragem por canal</h3><p>Canal pago e outbound ancoram em <b>R$4.000</b>; piso de fechamento R$2.200 mediante condicoes.</p>
+   <h3>Regra de ouro</h3><p>Toda reducao de preco acompanha retirada de escopo. Nunca desconto com escopo intacto.</p>`},
+ {titulo:"Narrativa e provas", meta:"wiki do ambiente · usada por copy, roteiro e mensagem",
+  html:`<h3>Posicionamento</h3><p>O time de marketing completo que a sua empresa ainda nao podia ter.</p>
+   <h3>Promessa</h3><p>Processo garantido, nunca resultado garantido. Sucesso depende de fatores que nao controlamos.</p>
+   <h3>Provas liberadas</h3><ul><li>Dr. Marcelo - <b>liberado</b></li><li>AmenBreak - <b>liberado</b></li>
+   <li>Demais clientes - <b>sem autorizacao, nao citar</b></li></ul>`},
+ {titulo:"Regras de corte e escala", meta:"wiki do ambiente · escritas ANTES de haver dinheiro na mesa",
+  html:`<ul><li>Canal com 30 dias e R$1.000 sem lead qualificado dentro da meta de CPL e cortado. Sem debate.</li>
+   <li>Canal que bater CPL e conversao dobra de verba na revisao seguinte.</li>
+   <li>Nenhum canal novo recebe mais de R$1.000 antes de provar CPL.</li>
+   <li>Nada de verba antes da oferta e do ICP fechados.</li></ul>
+   <p>Valem mesmo quando doer. E por isso que estao aqui, e nao na sua cabeca.</p>`},
+ {titulo:"Conexoes do ambiente", meta:"wiki do ambiente · o que da para fazer por prompt hoje",
+  html:`<h3>Ativas</h3><ul><li>Google Ads · Kairogen (criativo) · Chrome</li></ul>
+   <h3>Em instalacao (Pintor)</h3><ul><li>HubSpot · Meta Ads · GA4 + Search Console · WordPress · Gmail</li></ul>
+   <h3>A construir</h3><ul><li>Snov.io (nao existe MCP pronto - wrapper minimo)</li></ul>
+   <p>Acao que gasta dinheiro real sempre pede confirmacao explicita antes de executar.</p>`}
+ ,{titulo:"Naturezas de tarefa e comandos", meta:"wiki do ambiente · como o trabalho se classifica aqui dentro",
+  html:`<h3>Tres naturezas — e elas se distinguem por ONDE escrevem</h3>
+   <ul><li><b>Execucao</b> — escreve no mundo, via conexoes. Artefato: uma peca (campanha no ar, pagina, video, e-mail enviado).</li>
+   <li><b>Analise</b> — le os numeros que ja geramos. Artefato: uma decisao (cortar, escalar, manter).</li>
+   <li><b>Discovery</b> — pesquisa e reflete. Artefato: uma diretriz, que vira WIKI e passa a valer em todo card futuro.</li></ul>
+   <h3>Card ou aba?</h3>
+   <p>Se o resultado vale so para este objetivo, e uma <b>aba</b> dentro do card. Se vale para todos os
+   cards futuros, e <b>card proprio</b>. A pergunta que decide nao e o assunto — e o alcance da resposta.</p>
+   <h3>O loop</h3>
+   <p>Execucao gera dado -> analise vira decisao -> quando a analise repete o mesmo veredito ou nao explica,
+   nasce um discovery -> discovery vira diretriz -> a diretriz entra sozinha em todo card novo.
+   <b>E assim que o ambiente aprende em vez de so produzir.</b></p>
+   <h3>Regra dura do discovery</h3>
+   <p>Discovery so fecha quando existe diretriz escrita que <b>muda o que a gente faz</b>. Se terminou e
+   nada mudou, era conversa — e tudo bem, mas o card nao fecha.</p>
+   <h3>Os verbos sao comandos, nao tipos de card</h3>
+   <p>criar · escrever · preparar · subir · enviar · responder · cortar · gravar · analisar · verificar ·
+   decidir · discovery · pesquisar · promover. Clique em "/ para comandos" na caixa de prompt.
+   <b>Verbo que toca o mundo real pede confirmacao; verbo que so produz rascunho, nao.</b></p>`}
+];
+
+/* ---------- conversas ---------- */
+const MENSAGENS = {
+"campanha-clinicas/orquestrador":[
+ {t:"sistema",a:"comando",x:"Card aberto · natureza EXECUCAO · WIKI carregada · memoria: 3 anotacoes · conexoes: Meta, GA4, HubSpot"},
+ {t:"usuario",a:"joao",x:"quero subir a campanha de clinicas essa semana"},
+ {t:"agente",a:"Orquestrador",x:"Peguei. Ja estou com ICP, oferta, narrativa e provas liberadas pela WIKI. O objetivo deste card e <b>campanha no ar medindo CPL</b> — ele so fecha quando esse artefato existir.<br>Faltam dois insumos: a <code>url da LP</code> e o <code>tracking</code>."},
+ {t:"usuario",a:"joao",x:"e a LP, quem faz?"},
+ {t:"agente",a:"Orquestrador",x:"Abri o card na frente de conteudo quando o copy viu que a home nao promete diagnostico com as palavras do anuncio. <b>Voce nao pediu — o trabalho pediu.</b>"},
+ {t:"sistema",a:"comando",x:"Card criado em outra frente: conteudo -> «LP da oferta de diagnostico» · artefato: url da LP no ar"},
+ {t:"agente",a:"Orquestrador",x:"E abri tambem um card de <b>discovery</b>: «qual e o estilo de LP da Nexus». Aquela pergunta vale pra toda pagina futura, entao nao pode morrer dentro deste card."},
+ {t:"usuario",a:"joao",x:"beleza. deixa a campanha montada e sobe quando a LP subir"},
+ {t:"agente",a:"Orquestrador",x:"Feito: 1 campanha, 3 conjuntos, 6 variacoes — <b>pausada</b>. Quando a LP existir eu te aviso, voce confirma e eu subo pelo conector."},
+ {t:"acao",a:"",x:"<code>/subir</code> · <b>Confirmacao necessaria:</b> subir campanha com R$1.300 na conta Nexus (Meta Ads).<br>Verbo que toca o mundo real nao executa sozinho."}
+],
+"campanha-clinicas/copy-de-anuncio":[
+ {t:"sistema",a:"comando",x:"Aba aberta · WIKI carregada · memoria da sessao (3 anotacoes)"},
+ {t:"agente",a:"CopyDeAnuncio",x:"6 variacoes com a frase do gancho intacta, porque ela tem que bater com o titulo da LP. So a prova do Dr. Marcelo. Nenhuma cita preco."}
+],
+"campanha-clinicas/arquiteto-meta":[
+ {t:"sistema",a:"comando",x:"Aba aberta · conector Meta Ads: leitura ok"},
+ {t:"agente",a:"ArquitetoMeta",x:"Estrutura de descoberta: 3 conjuntos por angulo, 6-8 criativos cada, R$1.300 no mes. Teto de CPL R$240 — vem do ticket de R$4.000 da WIKI."}
+],
+"revisao-semanal/orquestrador":[
+ {t:"sistema",a:"comando",x:"Card RECORRENTE · natureza ANALISE · reabriu segunda 08:00 com dados novos dos conectores"},
+ {t:"agente",a:"Orquestrador",x:"Puxei a semana. Este card nao produz peca nenhuma — ele produz <b>uma decisao</b>. E a decisao desta semana e dura."},
+ {t:"veredito",a:"",x:"<b>Meta · cohort clinicas</b><br>32 dias rodando · R$1.180 gastos · 14 leads · CPL R$310 (teto: R$240) · 2 MQL<br><br><b>A regra escrita em 12/08 diz: cortar.</b> 30 dias + R$1.000 sem lead qualificado dentro da meta de CPL."},
+ {t:"usuario",a:"joao",x:"puta, mas o volume de MQL ta ok. da mais uma semana?"},
+ {t:"agente",a:"Orquestrador",x:"Posso registrar «manter» — mas ai eu preciso anotar o motivo na memoria, porque a regra foi escrita <b>antes de haver dinheiro na mesa, justamente pra valer quando doer</b>. Se voce mantiver, eu marco revisao obrigatoria em 7 dias com teto de mais R$300."},
+ {t:"agente",a:"Orquestrador",x:"Uma coisa que eu vi e vale mais que a decisao de hoje: <b>e a terceira semana seguida que o CPL alto vem do mesmo angulo de criativo.</b> Isso ja nao e analise, e padrao. Sugiro abrir um discovery."},
+ {t:"sistema",a:"comando",x:"Sugestao de card: discovery -> «que angulo de criativo funciona no cohort clinicas»"}
+],
+"revisao-semanal/analista-de-canal":[
+ {t:"sistema",a:"comando",x:"Aba aberta · leitura: Meta Ads, GA4, HubSpot"},
+ {t:"agente",a:"AnalistaDeCanal",x:"CPL por conjunto: angulo A R$212 · angulo B R$298 · angulo C R$430. O agregado de R$310 esconde que <b>um conjunto esta dentro da meta</b>. Cortar o canal inteiro joga fora o A junto."}
+],
+"discovery-lp/orquestrador":[
+ {t:"sistema",a:"comando",x:"Card aberto · natureza DISCOVERY · artefato esperado: diretriz na WIKI"},
+ {t:"agente",a:"Orquestrador",x:"Este card existe porque a pergunta «qual e o estilo de LP da Nexus» <b>vale pra toda pagina futura</b> — se ficasse como aba dentro da campanha, a resposta morreria junto com ela."},
+ {t:"usuario",a:"joao",x:"e o que voce achou?"},
+ {t:"agente",a:"Orquestrador",x:"Comparei as 2 paginas atuais no GA4 (41 dias), fiz teardown de 6 concorrentes e cruzei com o que o Dr. Marcelo falou em julho. Chegou numa hipotese so."},
+ {t:"diretriz",a:"",x:"<b>Diretriz candidata:</b> pagina dedicada por criativo converte mais que a home, mesmo com menos volume — desde que o titulo repita a <b>frase exata</b> do gancho.<br><br>Se voce aprovar, isso vira WIKI e <b>toda LP futura nasce com essa regra</b>, sem voce repetir."},
+ {t:"agente",a:"Orquestrador",x:"E se voce reprovar, o card <b>nao fecha</b> — discovery so termina quando existe diretriz que muda o que a gente faz. Sem isso, foi conversa."}
+],
+"verificar-tracking/orquestrador":[
+ {t:"sistema",a:"comando",x:"Card aberto · natureza ANALISE · leitura: GA4 + CRM + Meta"},
+ {t:"agente",a:"Orquestrador",x:"GA4 conta 17 leads, o CRM conta 14. <b>18% de divergencia.</b> Antes de qualquer decisao de verba, isso precisa fechar — decidir com dado errado e pior que decidir sem dado."},
+ {t:"usuario",a:"joao",x:"de onde vem a diferenca?"},
+ {t:"agente",a:"Orquestrador",x:"3 leads chegaram sem UTM: vieram de link compartilhado no WhatsApp. Nao e bug de tracking, e <b>caminho que a gente nao tinha previsto</b>. Isso aqui ja cheira a discovery, nao a correcao."}
+],
+"lp-clinicas/orquestrador":[
+ {t:"sistema",a:"comando",x:"Card aberto · natureza EXECUCAO · criado automaticamente pela frente de midia"},
+ {t:"agente",a:"Orquestrador",x:"Quem espera por este card: <b>campanha-clinicas</b>. Assim que a pagina subir, aquele card destrava sozinho e te avisa."},
+ {t:"usuario",a:"joao",x:"o titulo tem que ser igual ao do anuncio, ne"},
+ {t:"agente",a:"Orquestrador",x:"Sim — e repare que isso ainda nao e diretriz oficial: esta sendo decidido no card de discovery ao lado. Enquanto nao for, eu sigo o que voce falou; depois passa a ser automatico."}
+],
+"leva-videos/orquestrador":[
+ {t:"sistema",a:"comando",x:"Card aberto · natureza EXECUCAO · contem MOMENTO HUMANO (gravacao)"},
+ {t:"agente",a:"Orquestrador",x:"4 roteiros prontos e aprovados pelo revisor. <b>Estao esperando so voce.</b> Depois do seu ok, a terca fica reservada e o resto do card anda sem voce."},
+ {t:"usuario",a:"joao",x:"quanto tempo de bloco isso da?"},
+ {t:"agente",a:"Orquestrador",x:"1h30 com margem. Checei o acervo antes: 2 criativos saem de material que ja existe. <b>O que ja esta gravado nao volta pro comeco.</b>"}
+],
+"instrumentacao/orquestrador":[
+ {t:"sistema",a:"comando",x:"Card aberto · natureza EXECUCAO · dono das etapas: Pintor"},
+ {t:"agente",a:"Orquestrador",x:"Dois cards travam neste: a <b>campanha</b> (espera tracking) e a <b>lista B2B</b> (espera caixas aquecidas). Aquecimento e tempo de calendario: 2-3 semanas."}
+],
+"lista-b2b/orquestrador":[
+ {t:"sistema",a:"comando",x:"Card aberto · natureza EXECUCAO · travado: espera «caixas aquecidas»"},
+ {t:"agente",a:"Orquestrador",x:"137 de 200 empresas ja dentro dos cortes do ICP. Posso terminar lista e sequencia agora — <b>o travamento e so no disparo</b>, entao nao paro o card inteiro por causa dele."}
+],
+"oferta-clinicas/orquestrador":[
+ {t:"sistema",a:"comando",x:"Card CONCLUIDO · natureza DISCOVERY · diretriz em vigor na WIKI"},
+ {t:"agente",a:"Orquestrador",x:"Este card morreu do jeito certo: virou <b>diretriz</b>. ICP, oferta e narrativa estao na WIKI e sao lidos por todo agente antes de escrever qualquer coisa."},
+ {t:"usuario",a:"joao",x:"ou seja, eu nao repito mais isso"},
+ {t:"agente",a:"Orquestrador",x:"Nunca mais. E esse e o ponto do discovery: <b>ele nao entrega uma peca, entrega uma regra</b> — e a regra trabalha sozinha em todo card futuro. E assim que o ambiente vira ativo em vez de esforco."}
+]
+};
+const MSG_PADRAO=[{t:"sistema",a:"comando",x:"Aba nova · a memoria da sessao ja esta carregada"}];
+
+/* ============ ESTADO ============ */
+let iFrente=3, idCard="revisao-semanal", iAba=0, visao="hoje", iWiki=0;
+const $=id=>document.getElementById(id);
+const card=()=>CARDS.find(c=>c.id===idCard);
+const cardsDaFrente=()=>CARDS.filter(c=>c.frente===FRENTES[iFrente].id);
+const aba=()=>card().agentes[iAba]||card().agentes[0];
+const ROTULO={travado:"travado",voce:"espera voce",andando:"andando",pronto:"concluido"};
+const CLS={travado:"trv",voce:"voce",andando:"and",pronto:"pronto"};
+
+/* ============ SIDEBAR ============ */
+function pintarFrentes(){
+  $("frente-ativa").textContent=FRENTES[iFrente].nome;
+  $("lista-frentes").innerHTML=FRENTES.map((f,i)=>{
+    const n=CARDS.filter(c=>c.frente===f.id).length;
+    return `<div class="item ${i===iFrente?"ativo":""}" data-frente="${i}"
+      style="border-left-color:var(--f-${f.id})">${f.nome}<span class="contagem">${n}</span></div>`;}).join("");
+}
+function pintarListaCards(){
+  const l=cardsDaFrente();
+  $("lista-cards").innerHTML=l.length?l.map(c=>{
+    const s=c.estado==="voce"?"◆":c.estado==="travado"?"⏸":c.estado==="pronto"?"✓":"›";
+    const n=c.natureza==="analise"?"A":c.natureza==="discovery"?"D":"E";
+    return `<div class="item ${c.id===idCard?"ativo":""}" data-card="${c.id}">
+      <span style="color:var(--n-${c.natureza==="analise"?"analise":c.natureza==="discovery"?"disc":"exec"});
+      font-weight:700;font-size:10px">${n}</span> ${c.titulo}<span class="sinal">${s}</span></div>`;
+  }).join(""):`<div class="vazio">Nenhum card aqui. Fale com o orquestrador para abrir um.</div>`;
+}
+
+/* ============ TOPO — muda conforme a NATUREZA ============ */
+function pintarTopo(){
+  const c=card(), N=NATUREZAS[c.natureza];
+  const et=c.etapas.map(e=>{
+    const cl=e.humano?"humano":e.e==="ok"?"ok":(e.e==="andando"||e.e==="agora")?"andando":e.e==="espera"?"espera":"";
+    const m=e.e==="ok"?"✓ ":e.e==="agora"?"◆ ":e.e==="espera"?"⏸ ":"";
+    return `<div class="etapa ${cl}">${m}${e.n}<span class="quem">${e.q}</span></div>`;}).join("");
+  let miolo="";
+  if(c.natureza==="execucao"){
+    const cons=c.consome.length?c.consome.map(a=>
+      `<span class="chip ${a.ok?"ok":"falta"}">${a.ok?"✓":"⏸"} ${a.o}</span>`).join("")
+      :`<span class="chip">nada — card de origem</span>`;
+    miolo=`<div class="artefatos"><div class="bloco"><b>CONSOME</b>${cons}</div>
+      <div class="bloco"><b>PRODUZ — peca no mundo</b><span class="chip alvo">◎ ${c.produz}</span></div></div>`;
+  }else if(c.natureza==="analise"){
+    const dados=(c.le||[]).map(d=>`<div class="dado ${d.c}"><span>${d.r}</span><b>${d.v}</b></div>`).join("");
+    miolo=`<div class="leitura">${dados}</div>
+      <div class="artefatos"><div class="bloco"><b>PRODUZ — decisao</b>
+      <span class="chip alvo">◎ ${c.produz}</span></div></div>`;
+  }else{
+    const f=(c.fontes||[]).map(x=>`<span class="chip">${x}</span>`).join("");
+    miolo=`<div class="artefatos"><div class="bloco"><b>HIPOTESE</b>
+      <div style="font-size:12px;color:#c2c2c2;line-height:1.5;max-width:78ch">${c.hipotese||"—"}</div></div></div>
+      <div class="artefatos"><div class="bloco"><b>FONTES</b>${f}</div>
+      <div class="bloco"><b>PRODUZ — diretriz</b><span class="chip alvo">◎ ${c.produz}</span></div></div>`;
+  }
+  $("topo").innerHTML=`
+    <div class="linha1"><b>${c.titulo}</b>
+      <span class="selo-nat ${c.natureza}">${N.rotulo}</span>
+      ${c.recorrente?`<span class="selo-nat recorrente">RECORRENTE — nao fecha</span>`:""}
+      <span class="frente">${FRENTES.find(f=>f.id===c.frente).nome}</span>
+      <span class="frente">${ROTULO[c.estado]}${c.espera?" · "+c.espera:""}</span></div>
+    <div class="objetivo">${c.objetivo}</div>
+    <div class="destino">natureza <b>${N.rotulo}</b> — ${N.destino}</div>
+    ${miolo}
+    <div class="regua-etapas">${et}</div>`;
+}
+
+function pintarAbas(){
+  $("abas").innerHTML=card().agentes.map((a,i)=>
+    `<button class="aba ${i===iAba?"ativa":""}" data-aba="${i}">${a.nome}
+      <span class="papel">${a.papel}</span></button>`).join("")+
+    `<button class="aba aba-nova" title="chamar outro agente">+</button>`;
+}
+function pintarConversa(){
+  const m=MENSAGENS[idCard+"/"+aba().nome]||MSG_PADRAO;
+  $("visao-card").innerHTML=m.map(x=>{
+    if(x.t==="acao")return `<div class="acao-humana">${x.x}<div class="btns">
+      <button class="sim">Aprovar e subir</button><button>Ver estrutura</button><button>Agora nao</button></div></div>`;
+    if(x.t==="veredito")return `<div class="veredito">${x.x}<div class="btns">
+      <button class="sim">Cortar</button><button>Manter mais 7 dias</button><button>Escalar</button></div></div>`;
+    if(x.t==="diretriz")return `<div class="diretriz">${x.x}<div class="btns">
+      <button class="sim">Aprovar e promover para a WIKI</button><button>Ainda nao</button></div></div>`;
+    return `<div class="msg ${x.t}"><span class="autor">${x.a}</span><span class="texto">${x.x}</span></div>`;
+  }).join("");
+}
+function pintarMemoria(){
+  const m=card().memoria;
+  $("memoria").innerHTML="<h3>MEMORIA DA SESSAO</h3>"+(m.length?m.map(a=>
+    `<div class="anotacao"><span class="chave">${a.chave}</span>
+     <span class="autor">por ${a.autor}</span><span class="valor">${a.valor}</span></div>`).join("")
+    :`<div class="vazio">Nada anotado ainda.</div>`);
+}
+function pintarStatus(){
+  const c=card();
+  $("caminho").textContent=`nexus-aquisicao / ${c.frente} / ${c.id} / ${aba().nome}`;
+  $("metricas").textContent=` | ${NATUREZAS[c.natureza].rotulo.toLowerCase()} | etapas: ${c.etapas.filter(e=>e.e==="ok").length}/${c.etapas.length} | memoria: ${c.memoria.length}`;
+}
+
+/* ============ HOJE ============ */
+function pintarHoje(){
+  const pend=[];
+  CARDS.forEach(c=>c.etapas.forEach(e=>{
+    if(e.humano&&(e.e==="agora"||e.e==="proximo")&&c.natureza==="execucao")
+      pend.push({tipo:e.e==="agora"?"AGORA":"TERCA",txt:e.n,card:c.id,titulo:c.titulo});}));
+  pend.push({tipo:"CALL",txt:"call comercial — lead Onodera, 14h",card:"campanha-clinicas",titulo:"comercial"});
+  const trav=CARDS.filter(c=>c.estado==="travado");
+  $("badge-hoje").textContent=pend.length+DECISOES.length;
+  $("visao-hoje").innerHTML=`<div class="hoje">
+   <div class="grupo humano"><div class="titulo">EXECUTAR / APROVAR — ESPERANDO VOCE</div>
+     ${pend.map(p=>`<div class="pend" data-ir="${p.card}"><span class="tipo">${p.tipo}</span>
+       <span class="txt">${p.txt}<span class="card-ref"> · ${p.titulo}</span></span>
+       <span class="card-ref">abrir →</span></div>`).join("")}</div>
+
+   <div class="grupo"><div class="titulo" style="color:var(--n-analise)">DECIDIR — ANALISE E DISCOVERY PRONTAS</div>
+     ${DECISOES.map(d=>`<div class="pend dec" data-ir="${d.card}"><span class="tipo">${d.tipo}</span>
+       <span class="txt">${d.txt}<span class="card-ref"> · ${d.rec}</span></span>
+       <span class="card-ref">decidir →</span></div>`).join("")}
+     <div class="nota-modelo"><b>Bloco novo da v3.</b> Analise nao termina em relatorio — termina em decisao sua.
+       Discovery nao termina em texto — termina em diretriz aprovada. Esses sao os momentos humanos de maior
+       consequencia do ciclo, e antes nao tinham lugar na tela.</div></div>
+
+   <div class="grupo"><div class="titulo">ANDOU SOZINHO DESDE ONTEM</div>
+     ${ANDOU_SOZINHO.map(a=>`<div class="pend andou" data-ir="${a.card}">
+       <span class="tipo">${a.tipo}</span><span class="txt">${a.txt}</span></div>`).join("")}</div>
+
+   <div class="grupo travado"><div class="titulo">TRAVADO — ESPERANDO ARTEFATO</div>
+     ${trav.map(c=>`<div class="pend trv" data-ir="${c.id}"><span class="tipo">⏸</span>
+       <span class="txt">${c.titulo}<span class="card-ref"> · espera ${c.espera}</span></span>
+       <span class="card-ref">abrir →</span></div>`).join("")}
+     <div class="nota-modelo"><b>Nao e etiqueta, e mecanismo:</b> o card sabe qual artefato falta e de qual
+       card ele vem. Quando existir, destrava sozinho e avisa aqui.</div></div></div>`;
+}
+
+/* ============ CARDS ============ */
+function pintarCards(){
+  const col=f=>{
+    const l=CARDS.filter(c=>c.frente===f.id);
+    return `<div class="coluna"><div class="titulo"><span>${f.nome.toUpperCase()}</span><span>${l.length}</span></div>
+      ${l.map(c=>{
+        const barra=c.etapas.map(e=>`<i class="${e.humano?"hum":e.e==="ok"?"ok":e.e==="espera"?"trv":""}"></i>`).join("");
+        return `<div class="card ${c.frente}" data-ir="${c.id}">
+          <span class="selo-nat ${c.natureza}">${NATUREZAS[c.natureza].rotulo}</span>
+          ${c.recorrente?`<span class="selo-nat recorrente">RECORRENTE</span>`:""}
+          <div style="margin-top:7px">${c.titulo}</div>
+          <span class="prod">◎ ${c.produz}</span>
+          <span class="est ${CLS[c.estado]}">${ROTULO[c.estado]}${c.espera?" · "+c.espera:""}</span>
+          <div class="barra">${barra}</div></div>`;}).join("")}</div>`;};
+  $("visao-cards").innerHTML=`<div style="display:flex;flex-direction:column;height:100%;gap:10px;min-height:0">
+    <div class="nota-modelo" style="margin:0"><b>Nao e Kanban por status.</b> Coluna = frente permanente.
+      Card = objetivo que atravessa areas. E cada card tem uma <b>natureza</b>:
+      <span style="color:var(--n-exec)">EXECUCAO escreve no mundo</span> ·
+      <span style="color:var(--n-analise)">ANALISE escreve uma decisao</span> ·
+      <span style="color:var(--n-disc)">DISCOVERY escreve a diretriz (vira WIKI)</span>.</div>
+    <div class="grade">${FRENTES.map(col).join("")}</div></div>`;
+}
+
+/* ============ NUMEROS ============ */
+function pintarNumeros(){
+  $("visao-numeros").innerHTML=`
+    <h2 class="sec">Painel do ambiente</h2>
+    <div class="nota-modelo" style="margin-bottom:14px"><b>O painel nao e tela de olhar — e insumo de card.</b>
+      Voce nao "consulta os numeros": voce abre a <span style="color:var(--n-analise)">analise da semana</span>
+      e sai de la com uma decisao registrada. Regra: se um numero nao esta aqui, ele nao existe.</div>
+    <h3 class="sec">O alvo</h3>
+    <table class="tabela"><tr><th>Item</th><th>Hoje</th><th>Alvo em 6 meses</th></tr>
+      <tr><td>MRR</td><td class="n">R$ 8.650 (4 clientes)</td><td class="n">R$ 50.650</td></tr>
+      <tr><td>Ticket medio</td><td class="n">R$ 2.163</td><td class="n">≥ R$ 4.000</td></tr>
+      <tr><td>Piso inegociavel</td><td colspan="2">ROAS 1 sobre a MIDIA — cada real de midia volta como R$1 de MRR</td></tr></table>
+    <h3 class="sec">CPL e CAC por canal <span style="color:var(--texto-fraco);font-weight:400">· via conector</span></h3>
+    <table class="tabela"><tr><th>Canal</th><th>Gasto</th><th>Leads</th><th>CPL</th><th>CAC</th><th>Veredito da semana</th></tr>
+      <tr><td>Meta · clinicas (agregado)</td><td class="n">R$ 1.180</td><td class="n">14</td><td class="n" style="color:var(--travado)">R$ 310</td><td class="n">—</td><td style="color:var(--n-analise)">decisao aberta</td></tr>
+      <tr><td>— conjunto angulo A</td><td class="n">R$ 402</td><td class="n">6</td><td class="n" style="color:var(--agente)">R$ 212</td><td class="n">—</td><td>dentro da meta</td></tr>
+      <tr><td>— conjunto angulo C</td><td class="n">R$ 390</td><td class="n">2</td><td class="n" style="color:var(--travado)">R$ 430</td><td class="n">—</td><td>candidato a corte</td></tr>
+      <tr><td>Cold email · B2B</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td>caixas aquecendo</td></tr>
+      <tr><td>Indicacao</td><td class="n">R$ 0</td><td class="n">3</td><td class="n">R$ 0</td><td class="n">R$ 0</td><td>1 MQL</td></tr></table>
+    <div class="nota-modelo"><b>Repare no que o agregado escondia:</b> o canal esta fora da meta, mas um conjunto
+      esta dentro. Cortar o canal inteiro jogaria fora o que funciona. Isso e o que uma analise faz e um
+      relatorio nao faz — e e por isso que ela termina em decisao, nao em numero.</div>`;
+}
+function pintarWiki(){
+  const p=WIKI[iWiki];
+  $("visao-wiki").innerHTML=`<div class="wiki">
+    <div class="wiki-indice"><div class="titulinho">WIKI DO AMBIENTE</div>
+      ${WIKI.map((w,i)=>`<div class="pagina ${i===iWiki?"ativo":""}" data-wiki="${i}">${w.titulo}</div>`).join("")}
+      <div class="nota-modelo" style="margin-top:14px;font-size:11px">Agente <b>propoe</b>, so o bibliotecario
+        escreve. E quem alimenta esta wiki e o <b>discovery</b>.</div></div>
+    <div class="wiki-texto"><h2>${p.titulo}</h2><div class="meta">${p.meta}</div>${p.html}</div></div>`;
+}
+function pintarPaleta(){
+  $("paleta").innerHTML=COMANDOS.map(g=>`<div class="grupo-cmd"><h4>${g.grupo}</h4>
+    ${g.itens.map(i=>`<div class="cmd"><code>${i.v}</code><small>${i.d}</small>
+      ${i.conf?`<span class="conf">confirma: ${i.conf}</span>`:""}</div>`).join("")}</div>`).join("")+
+    `<div class="nota-modelo" style="margin:0;font-size:11px">Os 10 verbos nao viraram tipos de card —
+     viraram comandos. <b>Verbo que toca o mundo real pede confirmacao; verbo que so produz rascunho, nao.</b></div>`;
+}
+
+/* ============ VISAO / EVENTOS ============ */
+function pintarVisao(){
+  document.querySelectorAll(".visao").forEach(v=>v.classList.add("escondido"));
+  $("visao-"+visao).classList.remove("escondido");
+  document.querySelectorAll(".visoes button").forEach(b=>
+    b.classList.toggle("ativo",b.dataset.visao===visao));
+  const soCard=visao==="card";
+  $("topo").style.display=soCard?"":"none";
+  $("abas").style.display=soCard?"":"none";
+}
+function pintarTudo(){
+  pintarFrentes();pintarListaCards();pintarTopo();pintarAbas();pintarConversa();pintarMemoria();
+  pintarStatus();pintarHoje();pintarCards();pintarNumeros();pintarWiki();pintarPaleta();pintarVisao();
+}
+function abrirCard(id){
+  idCard=id;iAba=0;visao="card";
+  iFrente=FRENTES.findIndex(f=>f.id===card().frente);
+  pintarTudo();
+}
+document.querySelectorAll(".visoes button").forEach(b=>{
+  b.onclick=()=>{visao=(visao===b.dataset.visao)?"card":b.dataset.visao;pintarVisao();};});
+$("lista-frentes").onclick=e=>{
+  const a=e.target.closest("[data-frente]");if(!a)return;
+  iFrente=+a.dataset.frente;const l=cardsDaFrente();
+  if(l.length)abrirCard(l[0].id);else{pintarFrentes();pintarListaCards();}};
+$("lista-cards").onclick=e=>{
+  const a=e.target.closest("[data-card]");if(!a)return;abrirCard(a.dataset.card);};
+$("abas").onclick=e=>{
+  const a=e.target.closest("[data-aba]");if(!a)return;
+  iAba=+a.dataset.aba;visao="card";pintarAbas();pintarConversa();pintarStatus();pintarVisao();};
+["visao-hoje","visao-cards"].forEach(v=>{
+  $(v).onclick=e=>{const a=e.target.closest("[data-ir]");if(a)abrirCard(a.dataset.ir);};});
+$("visao-wiki").onclick=e=>{
+  const a=e.target.closest("[data-wiki]");if(!a)return;iWiki=+a.dataset.wiki;pintarWiki();};
+$("btn-memoria").onclick=()=>{
+  const m=$("memoria");m.classList.toggle("escondida");
+  $("btn-memoria").textContent=m.classList.contains("escondida")?"mostrar memoria":"ocultar memoria";};
+$("dica-cmd").onclick=()=>$("paleta").classList.toggle("escondida");
+
+pintarTudo();
+</script>
+</body>
+</html>

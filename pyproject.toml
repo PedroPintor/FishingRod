@@ -1,0 +1,33 @@
+[project]
+name = "fishingrod"
+version = "0.1.0"
+description = "Ambiente de orquestracao multi-agente"
+requires-python = ">=3.14"
+# Sem dependencias de runtime nesta unidade (U0).
+# claude-agent-sdk entra em U6 (sessao); textual entra em U9 (interface).
+# Manter o nucleo sem o SDK e o que torna testavel o criterio de TD-02 em U6:
+# importar dominio/ e aplicacao/ com o SDK desinstalado.
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "hypothesis>=6.100",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# Empacota somente o pacote novo. O codigo atual da raiz (Ambiente/, model/,
+# cli.py, tui.py) coexiste sem ser recolhido pelo build (Q8=A).
+packages = ["src/fishingrod"]
+
+[tool.uv]
+# ESC-15: politica de idade minima de versao. Congela o universo de resolucao
+# para que o uv.lock seja reprodutivel.
+exclude-newer = "2026-08-25T00:00:00Z"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
