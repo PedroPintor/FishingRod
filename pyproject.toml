@@ -3,11 +3,16 @@ name = "fishingrod"
 version = "0.1.0"
 description = "Ambiente de orquestracao multi-agente"
 requires-python = ">=3.14"
-# Sem dependencias de runtime nesta unidade (U0).
-# claude-agent-sdk entra em U6 (sessao); textual entra em U9 (interface).
-# Manter o nucleo sem o SDK e o que torna testavel o criterio de TD-02 em U6:
-# importar dominio/ e aplicacao/ com o SDK desinstalado.
-dependencies = []
+# U6 (sessao): claude-agent-sdk e a unica dependencia direta de runtime
+# (NFR-S-01). Versao exata (NFR-S-02, TS-S-01): a 0.2.143 e a ultima com pacote
+# Windows, com o CLI 2.1.238 embutido, antes do corte de exclude-newer - e a
+# sessao usa esse CLI, nunca o do PATH (TS-S-02). textual entra em U9.
+# So adaptadores/sessao/ importa o SDK: dominio/ e aplicacao/ continuam
+# importando sem ele, e tests/sessao/test_fronteira.py prova isso num Python
+# com o import bloqueado (TD-02, NFR-S-07).
+dependencies = [
+    "claude-agent-sdk==0.2.143",
+]
 
 [dependency-groups]
 dev = [
@@ -31,3 +36,10 @@ exclude-newer = "2026-08-25T00:00:00Z"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# DP-S-24, NFR-S-08: os testes com o CLI do Claude de verdade gastam o limite
+# da assinatura e ficam fora da suite padrao - aparecem como deselected, nao
+# como skipped. Rodam com `uv run pytest -m sdk_real`.
+markers = [
+    "sdk_real: usa o CLI do Claude de verdade; fora da suite padrao",
+]
+addopts = "-m 'not sdk_real'"

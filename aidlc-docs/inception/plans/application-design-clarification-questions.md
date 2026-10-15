@@ -288,6 +288,14 @@ D) Other (please describe after [Answer]: tag below)
 
 [Answer]: B
 
+> **[Revogação parcial — 2026-08-26, NFR Requirements de U2, Q6]** A metade "**resultado
+> resumido**" desta resposta **sai desta iteração**; "qual tool + parâmetros resumidos" continua
+> valendo. Dois motivos: (1) a justificativa registrada aqui era auditoria do que o bibliotecário
+> propôs, mas **US-14 pede revisão antes de salvar**, em fluxo vivo — nenhum critério de aceite
+> desta iteração lê resultado de ferramenta depois do fato; (2) no stream do SDK o resultado **não
+> existe** no instante do evento de uso, e nenhuma unidade tem desenhada a correlação entre chamada
+> e resultado que preencheria o campo. A resposta original fica registrada como foi dada.
+
 ---
 
 ## 4. Higiene do `application-design-plan.md`

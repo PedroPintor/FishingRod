@@ -204,6 +204,16 @@ adaptadores concretos.
 
 > **/!\ Emenda 2026-08-25 - Units Generation.** Este catálogo passa a ser exposto ao **orquestrador** como as **ferramentas de ambiente** (R9), via MCP in-process (**Q11=A**). Três consequências registradas: (1) entra a ação `criar_chat(agente)`, que é como o orquestrador delega ao bibliotecário sem receber ferramentas de wiki (**Q14=X**) — não é componente novo, `ServicoDeAmbiente` §3.3 e `Chat` §2.5 já a previam (R2); (2) `criar_chat` só aceita agente de **lista fechada**, nesta iteração o bibliotecário, senão seria escalonamento de privilégio (R3); (3) toda ação acionada por agente consulta ~~`ambiente.aprovacao_de_agente_obrigatoria`~~ **[rodada 4]** `exige_aprovacao(...)` de `dominio/politica.py` antes de executar — hoje constante `True`, sem configuração. Unidade dona: **U5**.
 
+> **/!\ Emenda 2026-10-02 - Functional Design de U5 `acoes`.** O catálogo tem **6 ações** (Q1=A):
+> `criar_frente`, `criar_tarefa`, `criar_chat`, `criar_etapa`, `concluir_etapa`, `anotar_memoria`.
+> Cada uma declara **quem pode acioná-la** (`chamadores`); nesta iteração as 6 aceitam usuário e
+> agente (Q2=B). Quem aciona é dito pelo sistema num `Acionamento` (chamador + autor), e o alvo do
+> agente é amarrado à tarefa do chat (Q3=A). A política é consultada **uma vez, no catálogo**
+> (R-FD5-2); quando exige, o catálogo **espera** a resposta de uma porta nova,
+> `PortaDeConfirmacao`, implementada pela tela (Q4=A). A etapa de `concluir_etapa` é argumento
+> apontado pela **posição**, e não escopo novo (Q8=A, R-FD5-4). Detalhe em
+> `construction/acoes/functional-design/`.
+
 ### 3.2 `ParserDeComando`
 
 **Propósito.** Adaptador de entrada fino que traduz `"/nova-tarefa campanha de verao"` em
@@ -212,9 +222,17 @@ adaptadores concretos.
 **Responsabilidades.**
 - Detectar se uma string de entrada é comando (`startswith("/")`).
 - Fazer parsing tolerante a espaços em argumentos (corrige TD-11).
-- Resolver o alvo default (o item "ativo" na tela) quando o comando não especifica identidade
-  explícita.
+- ~~Resolver o alvo default (o item "ativo" na tela) quando o comando não especifica identidade
+  explícita.~~ **[emenda U5]** O parser não toca no alvo: a tela passa o alvo direto ao catálogo
+  (Q9=A, R-FD5-3).
 - **Não conhece regra de negócio.** Traduz sintaxe; não decide nada.
+
+> **/!\ Emenda 2026-10-02 - Functional Design de U5 `acoes`.** O parser **não conhece o catálogo**
+> (Q9=A): separa `/nome` do resto da linha e devolve os dois (`ComandoDigitado`). Quem reparte o
+> texto pelos parâmetros é o catálogo — cada parâmetro pega uma palavra e o último pega o resto
+> (Q7=A). Assim os comandos da tela (`/ajuda`, `/sair`) usam o mesmo parser sem estar no catálogo.
+> O exemplo `"/nova-tarefa campanha de verao"` acima passa a ser `"/criar-tarefa campanha de verao"`
+> (Q6=A).
 
 **Rastreio.** RF-F17, TD-11. Sustenta a mesma lista de US-15/US-16/US-17/US-19 via `/`.
 
@@ -234,6 +252,13 @@ conversa, coordena domínio + portas, e devolve resultado tipado (Pergunta 1B).
 **Rastreio.** RF-F05, RF-F07, RF-F11, RF-F15, ESC-05, ESC-13, ESC-19. Sustenta US-05, US-08, US-09,
 US-15, US-16.
 
+> **/!\ Emenda 2026-10-02 - Functional Design de U4 `ambiente`.** ~~"invariante: ao menos uma
+> entidade — Pergunta 16"~~ (R-FD4-2; revogado na Parte B.3 de U1). Responsabilidades acrescentadas:
+> criar etapa, listar e apagar ambiente (Q7=X + C1=A); guardar um objeto `Ambiente` por id no
+> processo, com uma trava por ambiente (Q1=A, Q10=A); tratar `ConflitoDeVersao` com até 3
+> tentativas (Q4=A). Sustenta também **US-04, US-17 (gravação) e US-19** (R-FD4-3). Não devolve
+> `Resultado` (Q3=A).
+
 ### 3.4 `ServicoConversa`
 
 **Propósito.** Orquestra o ciclo de uma mensagem de conversa em um chat: abre/reusa a
@@ -246,7 +271,8 @@ A/8B), devolve o stream para a interface consumir.
   andamento", atualizar conforme o streaming avança (`PortaSessao.enviar`), remover a marca no
   fim (Pergunta A).
 - Persistir **texto + registro resumido de uso de ferramenta** (tool, parâmetros resumidos,
-  resultado resumido) — não o stream inteiro de tokens parciais (Pergunta F/B).
+  ~~resultado resumido~~) — não o stream inteiro de tokens parciais (Pergunta F/B).
+  **[Emenda 2026-08-26 / NFR Q6]** O resultado sai desta iteração; ver `component-methods.md` §4.1.
 - Isolar falha do provedor: uma falha de `PortaSessao` não propaga além do chat onde ocorreu
   (US-03, RNF-06).
 - **Conversar não é uma ação do `CatalogoDeAcoes`** (Pergunta E2): tem assinatura própria porque
@@ -297,9 +323,20 @@ todas elas.
 iniciais) que materializa a wiki de um ambiente novo (ESC-19, Pergunta 16B).
 
 **Responsabilidades.**
-- Carregar-se a partir de um arquivo `.toml` (maquete embutida ou, nesta iteração, apenas leitura —
-  Pergunta C/16B) ou a partir dos dados de um formulário preenchido pelo usuário (US-09).
-- Validar a invariante de criação: ao menos uma entidade; propriedade não é exigida.
+- ~~Carregar-se a partir de um arquivo `.toml` (maquete embutida ou, nesta iteração, apenas leitura —
+  Pergunta C/16B) ou~~ a partir dos dados de um formulário preenchido pelo usuário (US-09).
+- ~~Validar a invariante de criação: ao menos uma entidade; propriedade não é exigida.~~
+
+> **/!\ Emenda 2026-09-23 - Functional Design de U3 `wiki`.** Três mudanças, todas decididas pelo usuário:
+> **(1) As maquetes prontas saem desta iteração** (Q8): *"vamos tirar isso da iteração e deixar para
+> depois como uma ideia futura"* — primeiro o software funciona, depois as maquetes servem de
+> referência de uso. Sem maquete, `carregar_toml` fica sem nenhum chamador e é **adiada**, com a
+> assinatura preservada em `component-methods.md` §3.4 para a iteração que as trouxer de volta.
+> **(2) A invariante "ao menos uma entidade" está REVOGADA** — Parte B.3 do FD de U1, aplicada aqui.
+> `EsquemaWiki.vazio()` é estado válido.
+> **(3)** O usuário também removeu `nome` e `descricao` do esquema (C6): a wiki não tem descrição.
+> O que resta é `entidades: tuple[EntidadeSemente, ...]`. Ver
+> `construction/wiki/functional-design/domain-entities.md` §5.
 - **Não sabe escrever `.toml`** nesta iteração — "salvar como maquete" está fora de escopo
   (Pergunta C).
 
@@ -314,9 +351,17 @@ iniciais) que materializa a wiki de um ambiente novo (ESC-19, Pergunta 16B).
 **Propósito.** Fronteira de domínio para salvar/carregar `Ambiente` (documento) e para a tabela de
 transcrição (Pergunta 3B, D-ARQ-04). Vocabulário de domínio, não SQL.
 
-**Responsabilidades (assinatura conceitual).** `salvar_ambiente`, `carregar_ambiente`,
-`inserir_mensagem`, `atualizar_mensagem`, `listar_mensagens(chat_id, limite)`. Assíncrona
+**Responsabilidades (assinatura conceitual).** ~~`salvar_ambiente`, `carregar_ambiente`,
+`inserir_mensagem`, `atualizar_mensagem`, `listar_mensagens(chat_id, limite)`.~~ Assíncrona
 (Pergunta E1); o `asyncio.to_thread` para `sqlite3` mora dentro do adaptador, não na porta.
+
+> **[Emenda — Functional Design de U2, 2026-08-26]** A lista cresceu:
+> `salvar_ambiente`, `carregar_ambiente`, **`listar_ambientes`** (sem ela não há como reabrir um
+> ambiente cujo id não se conhece), **`apagar_ambiente`** (Q8=B), **`anotar`** (Q2=B — memória saiu
+> do documento e virou tabela append-only), `inserir_mensagem` (agora com `id_ambiente`),
+> `atualizar_mensagem`, `registrar_uso_ferramenta`, `listar_mensagens(id_chat, limite, antes_de)`.
+> A estratégia híbrida passa a ser **um documento + três tabelas** (`anotacao`, `mensagem`,
+> `uso_ferramenta`). Detalhe em `construction/persistencia/functional-design/`.
 
 **Rastreio.** D-ARQ-04, RNF-05. Sustenta US-05, US-06.
 
@@ -324,9 +369,18 @@ transcrição (Pergunta 3B, D-ARQ-04). Vocabulário de domínio, não SQL.
 
 **Propósito.** Fronteira sobre o ciclo assíncrono do SDK medido pelo spike (Pergunta 5B).
 
-**Responsabilidades (assinatura conceitual).** `abrir(agente) -> SessaoViva` async;
+**Responsabilidades (assinatura conceitual).** ~~`abrir(agente) -> SessaoViva` async;~~
+**`abrir(agente, contexto) -> SessaoViva` async;**
 `enviar(sessao, mensagem) -> AsyncIterator[EventoConversa]` async; `fechar(sessao)` async. Eventos:
-pedaço de texto, uso de ferramenta, fim de turno.
+~~pedaço de texto, uso de ferramenta, fim de turno.~~ **mensagem entregue, pedaço de texto, uso de
+ferramenta, fim de turno, falha do turno.**
+
+> **/!\ Emenda 2026-10-02 - Functional Design de U6 `sessao`.** `abrir` ganha o
+> `ContextoDaSessao` (ids de ambiente, frente, tarefa e chat), para as ferramentas nascerem
+> amarradas ao chat (Q8=A, R-FD6-1). `abrir` só prepara e não falha por causa do provedor (Q2=B).
+> `enviar` nunca levanta: toda falha é o evento final `FalhaDoTurno` (G1, R-FD6-2). O primeiro
+> evento de um turno entregue é `MensagemEntregue` (C2=A, D-C2-1). Um turno por vez por sessão; a
+> fila é de U7 (C1=B). Detalhe em `construction/sessao/functional-design/`.
 
 **Rastreio.** ESC-18, D-ARQ-06, RF-F01, RF-F03. Sustenta US-01, US-02, US-03.
 
@@ -373,9 +427,31 @@ por Q13=A]**, `escrever_proposta`
   orquestrador, uma para o bibliotecário.
 - Isolar falha do provedor num erro tipado, sem propagar exceção crua (RNF-06, US-03).
 
+> **/!\ Emenda 2026-10-02 - Functional Design de U6 `sessao`.** Responsabilidades acrescentadas:
+> - receber no construtor o **registro de fábricas** de ferramentas, a pasta de trabalho e a
+>   fábrica de cliente (Q8=A, G11), e traduzir a `Ferramenta` neutra para o formato do SDK. O
+>   esquema e o texto das ferramentas de ambiente saem de um módulo de aplicação sem SDK (Q9=A);
+> - **isolar o agente da máquina**: nenhuma ferramenta nativa e nenhuma configuração do Claude Code
+>   da máquina, para **todo** agente (Q11=A); o processo não recebe variáveis de credencial de API
+>   (Q13=A);
+> - recusar na abertura um sub-agente com ferramenta de ambiente (R10, Q14=A);
+> - conectar só no primeiro envio e reconectar sozinho depois de uma queda (Q2=B, Q5=A);
+> - interromper pelo cancelamento, cancelando as ferramentas em execução da sessão (Q7=A);
+> - `encerrar()` fecha todas as sessões no fim do programa (G7).
+> - **Muda o que o spike mediu**: o texto chega aos poucos, pelas mensagens parciais do SDK (Q1=B).
+
 **Rastreio.** ESC-01, ESC-04, ESC-18, TD-01, TD-02, RNF-06.
 
-### 5.3 `AdaptadorWikiFilesystem`
+### 5.3 ~~`AdaptadorWikiFilesystem`~~ `WikiDeArquivos`
+
+> **/!\ Emenda 2026-10-01 - Code Generation de U3 `wiki`.** Renomeado para **`WikiDeArquivos`**
+> (`R-CG3-1`, decidido em Q9=A do NFR Design), em `src/fishingrod/adaptadores/wiki/`, dividido em
+> quatro módulos: `caminhos.py` (confinamento), `frontmatter.py`, `indice.py` e
+> `wiki_de_arquivos.py`. Onde este documento e os demais de Application Design dizem
+> `AdaptadorWikiFilesystem` — §3.6, §7, §8 e `services.md`, `component-dependency.md`,
+> `component-methods.md` §6.2, `application-design.md` — leia `WikiDeArquivos`. O texto antigo fica
+> como registro do desenho daquela fase. A validação de link listada abaixo foi para **U8**
+> (`RN-W-34`): U3 oferece `listar` como o meio de checar existência.
 
 **Propósito.** Implementação de `PortaWiki` sobre arquivos markdown no disco (ESC-17, Pergunta
 12D).
@@ -387,8 +463,16 @@ por Q13=A]**, `escrever_proposta`
   `..`, caminho absoluto ou symlink) escreve fora dela (RF-F14, RNF-10). Este confinamento é o
   ponto de PBT-03 (property-based testing).
 - Renderizar `index.md` por código, a partir de estrutura de pastas + frontmatter (Pergunta 15D) —
-  nunca aceita edição de agente. **[emenda]** O índice é **projeção do disco**: página criada fora
-  do app aparece na próxima renderização; nenhuma propriedade pode ter `descricao` vazia.
+  nunca aceita edição de agente. **[emenda]** O índice é **projeção do disco**: ~~página criada fora
+  do app aparece na próxima renderização;~~ nenhuma propriedade pode ter `descricao` vazia.
+
+> **/!\ Emenda 2026-09-23 - Functional Design de U3 `wiki`.** **Reconhecer página criada fora do app foi REVOGADO** (Q2): *"normalmente não pode
+> editar ou criar os arquivos da wiki manualmente fora do app (…) a wiki em algum momento vai ser um
+> tipo de armazenamento que o usuário não vai mais conseguir mexer fora do app"*. Página sem
+> frontmatter legível com `descricao` não vazia é **ignorada** pelo índice, e o arquivo não é tocado
+> (`RN-W-20`). "Projeção do disco" continua valendo — o que mudou é o que conta como conteúdo.
+> **`index.md` continua sendo projeção pura** (`RN-W-17`): a C6 removeu a descrição da wiki e a
+> descrição de entidade, então nenhuma informação vive só nele.
 - Validar links `[[...]]` na escrita (Pergunta 14B): recusar ou converter em proposta de criação
   da página de destino.
 

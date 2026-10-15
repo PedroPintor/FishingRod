@@ -227,6 +227,35 @@ class Resultado:
 - A TUI decide como renderizar (mensagem de sistema no modo `/`, toast ou validação inline no
   modo botão). O núcleo nunca produz string em português.
 
+> **/!\ Emenda 2026-10-02 - Functional Design de U5 `acoes`.** As seções 2.1 a 2.4 acima ficam
+> preservadas como registro de Application Design; valem as formas abaixo. Detalhe em
+> `construction/acoes/functional-design/domain-entities.md`.
+>
+> - **2.1** ~~`executar: Callable[[Alvo, dict], Awaitable[Resultado]]`~~ → `efetivar(servico, alvo,
+>   argumentos, referencias, acionamento) -> Awaitable[objeto]`: devolve o objeto ou levanta, e
+>   **só o catálogo devolve `Resultado`** (G1). `Acao` ganha `chamadores` (Q2=B) e `Parametro`
+>   ganha `descricao`, `opcoes` e `maximo` (G10).
+> - **2.2** `executar` passa a receber **quem aciona** (R-FD5-2), e nasce `executar_comando` para a
+>   barra, que aciona sempre como usuário (G8):
+>
+>   ```
+>   class CatalogoDeAcoes:
+>       def __init__(self, servico: ServicoDeAmbiente, confirmacao: PortaDeConfirmacao, acoes=...): ...
+>       def listar(self, escopo: Escopo | None = None, chamador: Chamador | None = None) -> tuple[Acao, ...]: ...
+>       def buscar(self, nome: str) -> Acao | None: ...
+>       async def executar(self, nome: str, alvo: Alvo, argumentos: Mapping[str, object],
+>                          acionamento: Acionamento) -> Resultado: ...
+>       async def executar_comando(self, comando: ComandoDigitado, alvo: Alvo) -> Resultado: ...
+>   ```
+>
+> - **2.3** ~~`interpretar(entrada, alvo_default) -> tuple[str, dict]`~~ → `interpretar(entrada) ->
+>   ComandoDigitado(nome, texto)`: o parser não conhece o catálogo nem o alvo (Q9=A, R-FD5-3). Ganha
+>   `formatar(comando) -> str`, a inversa (PBT-U5-01).
+> - **2.4** `Resultado` ganha `detalhe: Mapping[str, str]` (estruturado, só na falha), e
+>   `MotivoFalha` fica com 10 motivos (Q10=A, Q11=A).
+> - **Novo** — `PortaDeConfirmacao.confirmar(pedido: PedidoDeConfirmacao) -> bool`, em
+>   `aplicacao/portas/`, implementada por U9; **espera** a resposta, e só `True` confirma (Q4=A).
+
 ---
 
 ## 3. Aplicação — serviços
@@ -255,6 +284,31 @@ class ServicoDeAmbiente:
   (Pergunta A/8B), e devolve `Resultado` tipado. Estas são as funções que o `CatalogoDeAcoes`
   referencia em `Acao.executar`.
 
+> **/!\ Emenda 2026-10-02 - Functional Design de U4 `ambiente`.** O bloco acima foi substituído
+> (texto preservado). ~~"invariante: ao menos uma entidade… Levanta erro de domínio se `esquema`
+> não tiver nenhuma entidade"~~ (R-FD4-2, já revogado pela Parte B.3 de U1). ~~`-> Resultado`~~:
+> o serviço devolve o objeto afetado ou levanta exceção tipada, e quem traduz para `Resultado` é o
+> `CatalogoDeAcoes` de U5 (Q3=A). Toda operação recebe `id_ambiente` explícito (Q2=A); o
+> orquestrador vem do construtor (Q8=A); `criar_chat` recebe o **nome** de um agente da lista
+> fechada (Q9=A). São **10 operações** (Q7=X + C1=A):
+>
+> ```
+> class ServicoDeAmbiente:
+>     def __init__(self, persistencia, wiki, orquestrador: Agente, agentes_de_chat: tuple[Agente, ...]): ...
+>     async def criar_ambiente(self, nome: str, esquema: EsquemaWiki) -> Ambiente: ...
+>     async def carregar_ambiente(self, id_ambiente: Identidade) -> Ambiente: ...   # AmbienteInexistente (Q12=B)
+>     async def listar_ambientes(self) -> list[ResumoAmbiente]: ...
+>     async def apagar_ambiente(self, id_ambiente: Identidade) -> None: ...
+>     async def criar_frente(self, id_ambiente, nome: str) -> Frente: ...
+>     async def criar_tarefa(self, id_ambiente, id_frente, nome: str) -> Tarefa: ...
+>     async def criar_chat(self, id_ambiente, id_tarefa, nome_agente: str, nome: str = "") -> Chat: ...
+>     async def criar_etapa(self, id_ambiente, id_tarefa, descricao: str, executor: ExecutorEtapa) -> Etapa: ...
+>     async def concluir_etapa(self, id_ambiente, id_etapa) -> Etapa: ...
+>     async def anotar_memoria(self, id_ambiente, id_tarefa, chave: str, valor: str, autor: str) -> Anotacao: ...
+> ```
+>
+> `reabrir_etapa` fica fora desta iteração. Detalhe em `construction/ambiente/functional-design/`.
+
 ### 3.2 `ServicoConversa`
 
 ```
@@ -271,9 +325,14 @@ class ServicoConversa:
     mensagem do agente com marca "em andamento" no início do turno; conforme o iterador emite
     pedaços de texto, atualiza essa linha; ao receber o evento de fim de turno, remove a marca.
     Persiste também um registro resumido de cada uso de ferramenta (Pergunta F/B) — não o stream
-    de tokens parciais.
-  - Se `PortaSessao` levantar erro de provedor, o iterador emite um `EventoConversa` do tipo erro e
-    encerra — a exceção não escapa para a TUI como traceback (US-03, RNF-06).
+    de tokens parciais. **[Emenda 2026-08-26 / NFR Requirements de U2, Q6]** O registro guarda
+    **tool + argumentos resumidos**; o ~~resultado resumido~~ **sai desta iteração** — no stream do
+    SDK ele não existe no instante do evento, e nenhuma unidade desenha a correlação que o
+    preencheria. **Pergunta F=B parcialmente revogada.**
+  - ~~Se `PortaSessao` levantar erro de provedor, o iterador emite um `EventoConversa` do tipo erro e
+    encerra~~ **[Emenda 2026-10-02 / FD de U6, R-FD6-2]** `PortaSessao.enviar` **nunca levanta**:
+    a falha já chega como o evento final `FalhaDoTurno`, e o serviço o repassa — a exceção não
+    escapa para a TUI como traceback (US-03, RNF-06).
 - `carregar_transcricao(id_chat, limite)` — **entrada**: identidade do chat, limite de mensagens.
   **Saída**: lista de `MensagemPersistida` (papel, texto, uso de ferramenta resumido, timestamp),
   em ordem cronológica (garantida pela ordenabilidade de UUIDv7 — Pergunta 4B). Usada por US-06 ao
@@ -305,15 +364,25 @@ class ServicoBibliotecario:
 
 ```
 class EsquemaWiki:
-    nome: str
-    descricao: str
+    nome: str                          # [REVOGADO 2026-09-23 / C6] era o nome da maquete
+    descricao: str                     # [REVOGADO 2026-09-23 / C6] a wiki nao tem descricao
     entidades: list[EntidadeSemente]   # cada uma: nome, list[PropriedadeSemente(nome, descricao)]
 
     @staticmethod
-    def carregar_toml(caminho: Path) -> "EsquemaWiki": ...
+    def carregar_toml(caminho: Path) -> "EsquemaWiki": ...   # [ADIADA 2026-09-23 / Q8]
     @staticmethod
     def a_partir_do_formulario(dados: dict) -> "EsquemaWiki": ...
+    @staticmethod
+    def vazio() -> "EsquemaWiki": ...  # [NOVA 2026-09-23] estado valido (Parte B.3 de U1)
 ```
+
+> **/!\ Emenda 2026-09-23 - Functional Design de U3 `wiki`.** **`carregar_toml` ADIADA**: as maquetes prontas saíram desta iteração (Q8),
+> e sem elas o método fica sem nenhum chamador. A assinatura fica preservada acima, não apagada,
+> para a iteração que as trouxer de volta. **`nome` e `descricao` REVOGADOS** (C6): a wiki não tem
+> descrição, e o nome era o da maquete. **`vazio()` acrescentada**: a invariante "ao menos uma
+> entidade" foi revogada na Parte B.3 do FD de U1, então esquema sem entidade é estado válido e
+> precisa de construtor nomeado. Forma final em
+> `construction/wiki/functional-design/domain-entities.md` §5.
 
 - `carregar_toml(caminho)` — **entrada**: caminho de uma maquete embutida. **Saída**:
   `EsquemaWiki`. Usa `tomllib` (stdlib), **só leitura** (Pergunta 16B/C) — não existe
@@ -333,9 +402,23 @@ class PortaPersistencia(Protocol):
     async def carregar_ambiente(self, id: Identidade) -> Ambiente | None: ...
     async def inserir_mensagem(self, id_chat: Identidade, papel: str, texto: str, em_andamento: bool) -> Identidade: ...
     async def atualizar_mensagem(self, id_mensagem: Identidade, texto: str, em_andamento: bool) -> None: ...
-    async def registrar_uso_ferramenta(self, id_mensagem: Identidade, tool: str, args_resumo: str, resultado_resumo: str) -> None: ...
+    async def registrar_uso_ferramenta(self, id_mensagem: Identidade, tool: str, args_resumo: str) -> None: ...  # [emenda 2026-08-26 / NFR Q6] sem resultado_resumo
     async def listar_mensagens(self, id_chat: Identidade, limite: int) -> list[MensagemPersistida]: ...
 ```
+
+> **[Emenda — Functional Design de U2, 2026-08-26]** O bloco acima está **incompleto**. O contrato
+> final tem três métodos a mais e dois parâmetros novos:
+>
+> ```
+>     async def listar_ambientes(self) -> list[ResumoAmbiente]: ...            # RN-P-24
+>     async def apagar_ambiente(self, id: Identidade) -> None: ...             # Q8=B
+>     async def anotar(self, id_ambiente, id_tarefa, chave, anotacao) -> None  # Q2=B
+>     # inserir_mensagem ganha id_ambiente (sem ela apagar_ambiente nao acha as mensagens)
+>     # listar_mensagens ganha antes_de: Identidade | None  (cursor, Q5=A)
+> ```
+>
+> `salvar_ambiente` passa a poder levantar **`ConflitoDeVersao`** (Q4=C): não é mais "sempre
+> funciona". Semântica completa em `construction/persistencia/functional-design/business-logic-model.md`.
 
 - Todas as assinaturas são `async` uniformemente (Pergunta E1). Nenhuma menciona `sqlite3`,
   `cursor`, `conexão` ou SQL — vocabulário de domínio, como D-ARQ-04 exige.
@@ -360,7 +443,30 @@ class PortaSessao(Protocol):
   (`PedacoDeTexto | UsoDeFerramenta | FimDeTurno | ErroProvedor`).
 - `fechar(sessao)` — libera recursos do ciclo de vida do SDK.
 
-> **/!\ Emenda 2026-08-25 - Units Generation.** **R4 / Q12=A**: o `AdaptadorSessaoClaude` recebe no construtor um **registro nome->função** de ferramentas, montado pelo composition root. `abrir(agente)` resolve os nomes que `Agente` carrega contra esse registro e monta o servidor MCP in-process da sessão (**Q11=A**). A assinatura de `abrir` não muda; o que muda é de onde vem a função por trás de cada nome. Unidade dona: **U6**.
+> **/!\ Emenda 2026-08-25 - Units Generation.** **R4 / Q12=A**: o `AdaptadorSessaoClaude` recebe no construtor um **registro nome->função** de ferramentas, montado pelo composition root. `abrir(agente)` resolve os nomes que `Agente` carrega contra esse registro e monta o servidor MCP in-process da sessão (**Q11=A**). ~~A assinatura de `abrir` não muda; o que muda é de onde vem a função por trás de cada nome.~~ Unidade dona: **U6**.
+
+> **/!\ Emenda 2026-10-02 - Functional Design de U6 `sessao`.** A frase riscada acima não se
+> sustentou: uma função fixa no construtor não sabe de que chat é a sessão, e U5 exige a ferramenta
+> amarrada à tarefa do chat (R-FD6-1). Contrato final:
+>
+> ```
+> class PortaSessao(Protocol):
+>     async def abrir(self, agente: Agente, contexto: ContextoDaSessao) -> SessaoViva: ...  # Q8=A
+>     def enviar(self, sessao: SessaoViva, mensagem: str) -> AsyncIterator[EventoConversa]: ...
+>     async def fechar(self, sessao: SessaoViva) -> None: ...
+>
+> EventoConversa = MensagemEntregue | PedacoDeTexto | UsoDeFerramenta | FimDeTurno | FalhaDoTurno
+> ```
+>
+> - O registro é de **fábricas**: cada nome aponta para uma família e uma
+>   `fabrica(contexto, agente) -> Ferramenta`, chamada em `abrir` (Q8=A).
+> - `abrir` só levanta erro de montagem (`ConfiguracaoDeSessaoInvalida`, `AdaptadorEncerrado`),
+>   nunca por causa do provedor (Q2=B, G5). `enviar` **nunca levanta** (R-FD6-2).
+> - ~~`ErroProvedor`~~ → **`FalhaDoTurno(motivo, detalhe)`**, com 9 motivos (G1, Q4=A).
+> - `MensagemEntregue(conversa_nova)` abre todo turno entregue (C2=A, D-C2-1, G2).
+> - `enviar` deixa de ser `async def`: devolve o iterador direto, e o turno começa na primeira
+>   iteração.
+> - Detalhe em `construction/sessao/functional-design/`.
 
 ### 4.3 `PortaWiki`
 
@@ -371,8 +477,24 @@ class PortaWiki(Protocol):
     # [emenda Q13=A] removida desta iteracao:
     # async def buscar(self, localizador: str, termo: str) -> list[ResultadoBusca]: ...
     async def escrever_proposta(self, localizador: str, proposta: PropostaWiki) -> None: ...
-    async def renderizar_index(self, localizador: str) -> None: ...
+    async def renderizar_index(self, localizador: str, nome: str) -> None: ...  # [emenda 2026-09-23]
 ```
+
+> **/!\ Emenda 2026-09-23 - Functional Design de U3 `wiki`.** **`renderizar_index` ganha `nome`.** O cabeçalho do índice é
+> `# Wiki — <nome do ambiente>` (formato fixado pelo usuário na C1/C6), e o adaptador não pode
+> descobrir esse nome sem conhecer `Ambiente` ou a persistência — o que violaria D-ARQ-08. Quem
+> chama é `ServicoDeAmbiente` (U4) e `ServicoBibliotecario` (U8), que já têm o ambiente em mãos.
+> **É a única mudança de assinatura da porta nesta unidade**: as quatro operações continuam quatro,
+> e a materialização do `EsquemaWiki` não virou operação nova — o esquema é convertido em
+> `PropostaWiki` e passa por `escrever_proposta`.
+
+> **/!\ Emenda 2026-10-02 - Functional Design de U4 `ambiente` (Q6=A).** **`PortaWiki` ganha uma
+> quinta operação**, `async def apagar(self, localizador: str) -> None`: remove a raiz inteira,
+> confinada por `resolver_raiz`; raiz inexistente é no-op; falha de I/O vira
+> `ArmazenamentoIndisponivel`. Único chamador: `ServicoDeAmbiente.apagar_ambiente`, que cumpre assim
+> o critério 6 de U4 sem tocar o disco diretamente. A frase acima, "as quatro operações continuam
+> quatro", valia para U3 e foi superada por esta emenda. Implementada em `WikiDeArquivos` durante o
+> Code Generation de U4 (U3 reaberta para este acréscimo).
 
 - Todas recebem `localizador` (o valor de `RaizWiki.localizador`, com esquema — Pergunta D) em vez
   de caminho físico. A resolução do esquema para caminho real acontece dentro do adaptador.
@@ -420,6 +542,11 @@ async def propor_propriedade(args: {
 **Saída pública**: `EventoConversa` (tipo de aplicação). Esta função é o único lugar do sistema
 onde um tipo do `claude_agent_sdk` é lido — a conversão acontece antes de qualquer dado atravessar
 a fronteira da porta (RF-F04).
+
+> **/!\ Emenda 2026-10-02 - Functional Design de U6 `sessao`.** `ToolResultBlock` é **lido e
+> descartado**: resultado de ferramenta não vira evento desde a NFR Q6 de U2 (R-FD6-3). Entram
+> também as **mensagens parciais** do SDK, porque o texto chega aos poucos (Q1=B). A tabela
+> completa da conversão está em `construction/sessao/functional-design/business-logic-model.md` §3.1.
 
 ### 6.2 `AdaptadorWikiFilesystem.resolver` — resolução de localizador
 

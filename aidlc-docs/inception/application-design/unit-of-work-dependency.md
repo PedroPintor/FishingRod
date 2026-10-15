@@ -29,13 +29,20 @@ Linha = unidade. Coluna = de quem ela depende. `✔` = depende.
 | **U3** `wiki` | ✔ | ✔ | | — | | | | | | |
 | **U4** `ambiente` | ✔ | ✔ | ✔ | ✔ | — | | | | | |
 | **U5** `acoes` | ✔ | ✔ | | | ✔ | — | | | | |
-| **U6** `sessao` | ✔ | ✔ | | | | | — | | | |
+| **U6** `sessao` | ✔ | ✔ | | | | **✔** | — | | | |
 | **U7** `conversa` | ✔ | ✔ | ✔ | | | | ✔ | — | | |
 | **U8** `bibliotecario` | ✔ | ✔ | | ✔ | | | ✔ | | — | |
 | **U9** `interface` | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | — |
 
 **Triangular inferior, sem exceção** — nenhuma marca acima da diagonal. Isso é a prova visual de que
 o grafo é acíclico: se houvesse ciclo, alguma unidade dependeria de outra de número maior.
+
+> **/!\ Emenda 2026-10-02 - Functional Design de U6 `sessao` (Q9=A).** A marca **U6 → U5** em
+> negrito é nova. A conversão de ação do catálogo em ferramenta (esquema a partir do `Parametro`,
+> texto a partir do `Resultado`) mora num módulo de aplicação de U6 sem SDK
+> (`aplicacao/ferramentas/`), que importa `CatalogoDeAcoes`. A matriz continua triangular inferior
+> (U5 vem antes de U6) e a ordem de execução não muda. A seta ausente **U7 → U5** da §3.1 continua
+> ausente: quem importa o módulo de ferramentas é só o composition root (U9).
 
 ---
 
@@ -46,6 +53,7 @@ o grafo é acíclico: se houvesse ciclo, alguma unidade dependeria de outra de n
 | **U4 → U3** | `ServicoDeAmbiente.criar_ambiente` materializa a wiki a partir do `EsquemaWiki` e chama `renderizar_index` (`services.md` §2, passos 7 e 8). **Esta é a seta que corrigiu a ordem candidata do plano** — ver `unit-of-work.md` §2 |
 | **U5 → U4** | As ações do catálogo são cascas finas sobre `ServicoDeAmbiente`; criar frente/tarefa/chat passa por ele |
 | **U7 → U2** | A política de gravação (mensagem inserida no início do turno, atualizada no streaming) é feita pelo serviço de conversa contra a porta de persistência |
+| **U6 → U5** | **[emenda FD de U6, Q9=A]** As 6 ações viram ferramentas de ambiente num módulo de aplicação de U6, sem SDK, que lê o registro do catálogo e executa por `CatalogoDeAcoes.executar` |
 | **U8 → U6** | O bibliotecário abre sessão viva própria, isolada da do orquestrador |
 | **U8 → U3** | `FerramentasWiki` opera sobre `PortaWiki`; a escrita aprovada e a revalidação do índice são do adaptador de wiki |
 
@@ -80,6 +88,7 @@ graph TD
     U2 --> U4
     U3 --> U4
     U4 --> U5
+    U5 --> U6
     U2 --> U7
     U6 --> U7
     U3 --> U8
@@ -97,6 +106,7 @@ pré-requisito de"):
 - `U2` → `U4`, `U7`
 - `U3` → `U4`, `U8`
 - `U4` → `U5`
+- `U5` → `U6` **[emenda FD de U6, Q9=A]**
 - `U6` → `U7`, `U8`
 - `U5`, `U7`, `U8` → `U9`
 

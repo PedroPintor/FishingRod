@@ -41,8 +41,14 @@ Todos os serviços de aplicação seguem a mesma forma, decidida nas Perguntas 1
    - via `EsquemaWiki.carregar_toml(caminho)` se maquete escolhida;
    - via `EsquemaWiki.a_partir_do_formulario(dados)` se formulário preenchido.
 3. TUI chama `ServicoDeAmbiente.criar_ambiente(nome, esquema)`.
-4. O serviço valida a invariante de criação (ao menos uma entidade — Pergunta 16B). Se falhar,
-   devolve `Resultado` de erro sem tocar nenhum substrato.
+4. ~~O serviço valida a invariante de criação (ao menos uma entidade — Pergunta 16B). Se falhar,
+   devolve `Resultado` de erro sem tocar nenhum substrato.~~
+
+   > **/!\ Emenda 2026-09-23 - Functional Design de U3 `wiki`.** **Passo REVOGADO por inteiro.** A
+   > wiki pode nascer sem entidade alguma; índice vazio é estado válido, não erro. A revogação foi
+   > decidida na Parte B.3 do Functional Design de U1 e é aplicada agora que U3 chegou. Não existe
+   > validação de criação a falhar: o passo simplesmente deixa de existir. Texto original preservado
+   > riscado acima.
 5. O serviço cria `Ambiente` de domínio com `Identidade.nova()`, uma `Frente` padrão (mantém
    paridade com o comportamento atual de nascer com um projeto/frente default) e um `RaizWiki` com
    localizador `dados:wikis/<id_ambiente>` (Pergunta D).
@@ -57,6 +63,15 @@ Todos os serviços de aplicação seguem a mesma forma, decidida nas Perguntas 1
      semeando a partir de uma escolha que o próprio usuário acabou de fazer.
 8. O serviço chama `PortaWiki.renderizar_index` para produzir o `index.md` inicial.
 9. O serviço devolve `Ambiente` pronto para a TUI abrir.
+
+> **/!\ Emenda 2026-10-02 - Functional Design de U4 `ambiente`.** Duas mudanças nos passos 5 a 8,
+> texto original preservado acima. **(R-FD4-1)** Passo 5: ~~uma `Frente` padrão~~. O ambiente
+> nasce **sem** frente (Q1=A do FD de U1, já no código). **(Q5=A)** A ordem dos passos 6 a 8 se
+> inverte: **wiki primeiro** (`escrever_proposta` → `renderizar_index`), **banco depois**
+> (`salvar_ambiente`). Se a wiki falha, o ambiente não existe; se o banco falha, sobra uma pasta
+> órfã inofensiva. Nunca existe ambiente apontando para wiki inexistente. O passo 7 já não chama
+> "materializar": o esquema vira `PropostaWiki` (emenda de U3). Fluxo completo em
+> `construction/ambiente/functional-design/business-logic-model.md` §2.1.
 
 ### Diagrama de sequência (texto)
 
@@ -94,9 +109,10 @@ TUI → ServicoDeAmbiente.criar_ambiente(nome, esquema)
      ao mesmo tempo, repassa o pedaço para a TUI renderizar incrementalmente (streaming visível ao
      usuário — Pergunta 5B);
    - **uso de ferramenta** → chama
-     `PortaPersistencia.registrar_uso_ferramenta(id_mensagem, tool, args_resumo, resultado_resumo)`
-     (Pergunta F/B: registra tool + parâmetros resumidos + resultado resumido, não o payload
-     completo nem o stream de tokens parciais);
+     `PortaPersistencia.registrar_uso_ferramenta(id_mensagem, tool, args_resumo)`
+     (Pergunta F/B: registra tool + parâmetros resumidos ~~+ resultado resumido~~, não o payload
+     completo nem o stream de tokens parciais). **[Emenda 2026-08-26 / NFR Q6]** o resultado sai
+     desta iteração — não existe no instante do evento e ninguém desenhou a correlação;
    - **fim de turno** → chama `PortaPersistencia.atualizar_mensagem(id_mensagem, texto_final,
      em_andamento=False)`, removendo a marca de "em andamento" (Pergunta A/8B: *"queda no meio
      preserva o que já chegou; o carregamento distingue turno interrompido de turno completo"*);

@@ -23,6 +23,20 @@ def test_rn_11_raiz_wiki_deriva_da_identidade():
     assert ambiente.raiz_wiki.esquema() == "dados"
 
 
+def test_ambiente_nasce_com_versao_zero():
+    """Emenda de U2 (domain-entities.md 5.1): zero significa nunca gravado.
+
+    O campo entrou por ultimo na dataclass para nao mudar o significado de
+    nenhuma chamada posicional ja existente - por isso o teste tambem constroi
+    posicionalmente.
+    """
+    assert Ambiente(nome="ambiente").versao == 0
+
+    posicional = Ambiente("ambiente", [], Identidade.nova())
+    assert posicional.versao == 0
+    assert posicional.raiz_wiki == RaizWiki(f"dados:wikis/{posicional.id.valor}")
+
+
 @pytest.mark.parametrize(
     "localizador",
     ["dados:/wikis/x", "dados:\\wikis\\x", "dados:C:/wikis/x", "sem-esquema"],

@@ -26,6 +26,14 @@ class Ambiente:
     frentes: list[Frente] = field(default_factory=list)
     id: Identidade = field(default_factory=Identidade.nova)
     raiz_wiki: RaizWiki | None = None
+    # Revisao do agregado para bloqueio otimista (U2, domain-entities.md 5.1 /
+    # Q4=C). Zero significa "nunca gravado". Quem incrementa e a porta de
+    # persistencia, na gravacao bem-sucedida (RN-P-06) - o dominio so carrega o
+    # numero. A alternativa era salvar_ambiente(ambiente, versao_lida), que
+    # empurraria essa escrituracao para todo chamador.
+    # Ultimo campo de proposito: nenhuma chamada posicional existente muda de
+    # significado.
+    versao: int = 0
 
     def __post_init__(self) -> None:
         exigir_texto(self.nome, "nome do ambiente")

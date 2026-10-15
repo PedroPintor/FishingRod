@@ -8,6 +8,7 @@
 /* ------------------------------------------------------------------
    MOCKUP ILUSTRATIVO - nada aqui e' o sistema de verdade.
    O JS do fim do arquivo so redesenha a tela a partir de dados falsos.
+   Cenario: ambiente comercial da Anexo (conteudo, midia, CRO, outbound).
    ------------------------------------------------------------------ */
 :root{
   --fundo:        #1b1b1b;
@@ -23,6 +24,13 @@
   --sistema:      #d7b25a;
   --destaque:     #6ea8fe;
   --raio:         8px;
+
+  /* uma cor por fluxo de trabalho do cliente */
+  --f-conteudo:   #7bc96f;
+  --f-midia:      #6ea8fe;
+  --f-cro:        #d7b25a;
+  --f-outbound:   #4ec9d9;
+  --f-relacao:    #b98fe0;
 }
 
 *{box-sizing:border-box;margin:0;padding:0}
@@ -45,7 +53,7 @@ body{
 
 /* ===================== SIDEBAR ===================== */
 .sidebar{
-  width:215px;
+  width:225px;
   flex:none;
   display:flex;
   flex-direction:column;
@@ -67,30 +75,34 @@ body{
 
 .regua{border:none;border-top:1px solid var(--borda);margin:12px 0 14px}
 
-/* --- WIKI / Kanban: dois botoes colados --- */
+/* --- Semana / Kanban / WIKI: botoes colados --- */
 .visoes{display:flex;flex-direction:column}
 .visoes button{
   text-align:left;
   background:var(--cartao);
   color:var(--texto);
   border:1px solid var(--borda-forte);
-  padding:10px 12px;
+  padding:9px 12px;
   font:inherit;
   font-weight:600;
   cursor:pointer;
 }
 .visoes button:first-child{border-radius:var(--raio) var(--raio) 0 0}
-.visoes button:last-child{border-radius:0 0 var(--raio) var(--raio);margin-top:-1px}
+.visoes button:last-child{border-radius:0 0 var(--raio) var(--raio)}
+.visoes button + button{margin-top:-1px}
 .visoes button:hover{background:var(--cartao-alto)}
 .visoes button.ativo{
   border-color:var(--destaque);
   color:#fff;
   box-shadow:inset 2px 0 0 var(--destaque);
 }
+.visoes button small{
+  display:block;font-size:10.5px;font-weight:400;color:var(--texto-fraco);margin-top:2px;
+}
 
 /* --- caixas de Projetos e Sessoes --- */
 .caixa-lateral{
-  margin-top:16px;
+  margin-top:14px;
   border:1px solid var(--borda-forte);
   border-radius:var(--raio);
   background:var(--cartao);
@@ -117,7 +129,6 @@ body{
   margin-top:2px;
 }
 
-/* o botaozinho "v" do rascunho */
 .chevron{
   flex:none;
   width:28px;
@@ -134,7 +145,6 @@ body{
 .chevron:hover{color:var(--texto)}
 .caixa-lateral.aberta .chevron{transform:rotate(180deg)}
 
-/* corpo do dropdown de projetos: some quando fechado */
 .corpo{
   border-top:1px solid var(--borda);
   padding:6px;
@@ -151,17 +161,16 @@ body{
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
+  border-left:3px solid transparent;
 }
 .item:hover{background:var(--cartao-alto);color:var(--texto)}
 .item.ativo{background:var(--cartao-alto);color:var(--destaque);font-weight:600}
 .item .contagem{float:right;font-size:10.5px;color:var(--texto-fraco);font-weight:400}
 
-/* a caixa de sessoes estica ate o fim da sidebar */
 #caixa-sessoes{flex:1}
 #caixa-sessoes .corpo{flex:1}
 .vazio{padding:10px;font-size:11.5px;color:var(--texto-fraco);line-height:1.5}
 
-/* linha pontilhada do rascunho, entre sidebar e painel */
 .divisoria{
   width:4px;
   flex:none;
@@ -171,6 +180,17 @@ body{
 
 /* ===================== PAINEL PRINCIPAL ===================== */
 .principal{flex:1;display:flex;flex-direction:column;gap:8px;min-width:0}
+
+/* --- de qual card do Kanban esta sessao nasceu --- */
+.origem{
+  font-size:11.5px;
+  color:var(--texto-fraco);
+  padding:0 4px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.origem b{color:var(--texto);font-weight:600}
 
 /* --- abas = chats da sessao selecionada --- */
 .abas{
@@ -217,6 +237,8 @@ body{
 
 .miolo{flex:1;display:flex;gap:12px;min-height:0}
 .conteudo{flex:1;overflow-y:auto;padding-right:6px;min-width:0}
+.visao{height:100%}
+#visao-chat{height:auto}
 
 /* --- visao CHAT --- */
 .msg{margin-bottom:14px;line-height:1.55}
@@ -230,7 +252,7 @@ body{
 
 /* --- painel lateral da memoria (blackboard da sessao) --- */
 .memoria{
-  width:250px;
+  width:255px;
   flex:none;
   border-left:1px solid var(--borda);
   padding-left:12px;
@@ -252,20 +274,55 @@ body{
 
 /* --- visao WIKI --- */
 .wiki{display:flex;gap:18px;height:100%}
-.wiki-indice{width:180px;flex:none;border-right:1px solid var(--borda);padding-right:12px}
-.wiki-indice div{padding:6px 8px;border-radius:5px;color:var(--texto-fraco)}
-.wiki-indice div.ativo{background:var(--cartao);color:var(--texto)}
-.wiki-texto{flex:1;line-height:1.7;max-width:70ch}
+.wiki-indice{width:200px;flex:none;border-right:1px solid var(--borda);padding-right:12px;overflow-y:auto}
+.wiki-indice .titulinho{
+  font-size:10px;letter-spacing:1px;color:var(--texto-fraco);padding:0 8px 8px;
+}
+.wiki-indice div.pagina{padding:7px 8px;border-radius:5px;color:var(--texto-fraco);cursor:pointer;font-size:12.5px}
+.wiki-indice div.pagina:hover{background:var(--cartao);color:var(--texto)}
+.wiki-indice div.pagina.ativo{background:var(--cartao);color:var(--texto);font-weight:600}
+.wiki-texto{flex:1;line-height:1.7;max-width:74ch;overflow-y:auto;padding-right:8px}
 .wiki-texto h2{font-size:18px;margin-bottom:4px}
 .wiki-texto .meta{color:var(--texto-fraco);font-size:11px;margin-bottom:16px}
 .wiki-texto h3{font-size:13px;margin:18px 0 6px;color:var(--destaque)}
 .wiki-texto p{margin-bottom:10px;color:#c2c2c2}
+.wiki-texto ul{margin:0 0 12px 18px;color:#c2c2c2}
+.wiki-texto li{margin-bottom:5px}
 .wiki-texto code{background:var(--cartao);padding:1px 5px;border-radius:3px;font-size:12px}
+.nota{
+  border-left:3px solid var(--sistema);
+  background:var(--cartao);
+  padding:9px 12px;
+  border-radius:0 6px 6px 0;
+  font-size:12.5px;
+  color:#c2c2c2;
+  margin:14px 0;
+}
 
 /* --- visao KANBAN --- */
-.kanban{display:flex;gap:12px;height:100%}
+.quadro{display:flex;flex-direction:column;height:100%;gap:10px;min-height:0}
+.legenda{
+  font-size:11.5px;color:var(--texto-fraco);
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+}
+.legenda .pino{display:inline-flex;align-items:center;gap:5px}
+.legenda .bola{width:8px;height:8px;border-radius:50%;display:inline-block}
+
+.kanban{display:flex;gap:14px;flex:1;min-height:0;overflow-x:auto;padding-bottom:6px}
+.faixa{display:flex;flex-direction:column;gap:8px;min-height:0}
+.faixa > .rotulo-faixa{
+  font-size:10px;letter-spacing:1.5px;color:var(--texto-fraco);
+  border:1px dashed var(--borda-forte);border-radius:5px;
+  padding:5px 10px;text-align:center;flex:none;
+}
+.faixa.eixo > .rotulo-faixa{
+  color:var(--sistema);border-color:var(--sistema);border-style:solid;font-weight:600;
+}
+.faixa .colunas{display:flex;gap:10px;flex:1;min-height:0}
+
 .coluna{
-  flex:1;
+  width:212px;
+  flex:none;
   background:var(--fundo);
   border:1px solid var(--borda);
   border-radius:var(--raio);
@@ -273,32 +330,99 @@ body{
   display:flex;
   flex-direction:column;
   gap:8px;
-  min-width:0;
+  min-height:0;
+  overflow-y:auto;
 }
+.faixa.eixo .coluna{border-color:var(--sistema);background:#211d15}
+
 .coluna > .titulo{
-  font-size:11px;
-  letter-spacing:1px;
+  font-size:10.5px;
+  letter-spacing:.8px;
   color:var(--texto-fraco);
   display:flex;
   justify-content:space-between;
+  gap:6px;
+  flex:none;
 }
+
 .card{
   background:var(--cartao);
   border:1px solid var(--borda-forte);
+  border-left:3px solid var(--borda-forte);
   border-radius:6px;
   padding:9px 10px;
   font-size:12.5px;
-  line-height:1.45;
+  line-height:1.4;
+  cursor:pointer;
+  flex:none;
 }
-.card .tag{
-  display:inline-block;
-  margin-top:7px;
-  font-size:10px;
-  color:var(--texto-fraco);
-  border:1px solid var(--borda-forte);
-  border-radius:3px;
-  padding:1px 5px;
+.card:hover{background:var(--cartao-alto);border-color:var(--destaque)}
+.card.conteudo{border-left-color:var(--f-conteudo)}
+.card.midia   {border-left-color:var(--f-midia)}
+.card.cro     {border-left-color:var(--f-cro)}
+.card.outbound{border-left-color:var(--f-outbound)}
+.card.relacao {border-left-color:var(--f-relacao)}
+
+.card .selo{
+  display:block;margin-top:6px;font-size:10.5px;color:var(--sistema);
 }
+.card .elo{
+  display:block;margin-top:5px;font-size:10.5px;color:var(--destaque);
+}
+.card .rodape{
+  display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:8px;
+  font-size:10px;color:var(--texto-fraco);
+}
+.card .dia{border:1px solid var(--borda-forte);border-radius:3px;padding:1px 5px;text-transform:uppercase}
+.card .abrir{white-space:nowrap}
+.card:hover .abrir{color:var(--destaque)}
+.card.ativa-sessao .abrir{color:var(--agente)}
+
+/* --- visao SEMANA --- */
+.semana{display:flex;flex-direction:column;gap:12px;height:100%;min-height:0}
+.semana .intro{font-size:12px;color:var(--texto-fraco);line-height:1.5}
+.regua-semana{display:flex;gap:8px;flex:1;min-height:0;overflow-x:auto}
+.dia-col{
+  flex:1;min-width:132px;
+  background:var(--fundo);
+  border:1px solid var(--borda);
+  border-radius:var(--raio);
+  padding:10px;
+  display:flex;flex-direction:column;gap:6px;min-height:0;
+  overflow-y:auto;
+}
+.dia-col.eixo{border-color:var(--sistema);background:#211d15}
+.dia-col.calmo{opacity:.6}
+.dia-col .nome{font-size:10px;letter-spacing:1.2px;color:var(--texto-fraco);flex:none}
+.dia-col.eixo .nome{color:var(--sistema)}
+.dia-col .foco{font-size:12.5px;font-weight:600;line-height:1.35;margin-bottom:4px;flex:none}
+.mini{
+  border-left:3px solid var(--borda-forte);
+  background:var(--cartao);
+  border-radius:0 5px 5px 0;
+  padding:6px 8px;
+  font-size:11.5px;
+  line-height:1.35;
+  cursor:pointer;
+  flex:none;
+}
+.mini:hover{background:var(--cartao-alto)}
+.mini.conteudo{border-left-color:var(--f-conteudo)}
+.mini.midia   {border-left-color:var(--f-midia)}
+.mini.cro     {border-left-color:var(--f-cro)}
+.mini.outbound{border-left-color:var(--f-outbound)}
+.mini.relacao {border-left-color:var(--f-relacao)}
+.mini.acao{border-left-color:var(--destaque);color:var(--destaque)}
+
+.continuos{
+  border:1px dashed var(--borda-forte);
+  border-radius:var(--raio);
+  padding:10px 12px;
+  flex:none;
+}
+.continuos .titulo{font-size:10px;letter-spacing:1.2px;color:var(--texto-fraco);margin-bottom:8px}
+.continuos .fila{display:flex;gap:8px;flex-wrap:wrap}
+.continuos .fila .mini{flex:1;min-width:170px}
 
 /* --- barra de status --- */
 .status{
@@ -349,12 +473,13 @@ body{
 
   <!-- ===================== SIDEBAR ===================== -->
   <aside class="sidebar">
-    <h1>Ambiente<small>meu-ambiente</small></h1>
+    <h1>Ambiente<small>comercial-anexo</small></h1>
     <hr class="regua">
 
     <div class="visoes">
-      <button data-visao="wiki">WIKI</button>
-      <button data-visao="kanban">Kanban</button>
+      <button data-visao="semana">Semana<small>o ritmo: dom → sáb</small></button>
+      <button data-visao="kanban">Kanban<small>pré / gravação / pós</small></button>
+      <button data-visao="wiki">WIKI<small>o que vale em todo projeto</small></button>
     </div>
 
     <!-- dropdown: abre, escolhe o projeto, fecha -->
@@ -362,7 +487,7 @@ body{
       <div class="cabecalho">
         <div class="rotulo">
           <b>Projetos</b>
-          <span id="projeto-ativo">fishing-rod</span>
+          <span id="projeto-ativo">conteudo-e-criativos</span>
         </div>
         <button class="chevron" id="btn-projetos" title="abrir lista de projetos">v</button>
       </div>
@@ -383,6 +508,7 @@ body{
   <!-- ===================== PAINEL PRINCIPAL ===================== -->
   <main class="principal">
 
+    <div class="origem" id="origem"></div>
     <div class="abas" id="abas"></div>
 
     <section class="caixa">
@@ -392,54 +518,14 @@ body{
           <!-- ---------- VISAO: CHAT ---------- -->
           <div class="visao" id="visao-chat"></div>
 
-          <!-- ---------- VISAO: WIKI ---------- -->
-          <div class="visao escondido" id="visao-wiki">
-            <div class="wiki">
-              <div class="wiki-indice">
-                <div class="ativo">Arquitetura</div>
-                <div>Memória da Sessão</div>
-                <div>Agentes e Papéis</div>
-                <div>Comandos</div>
-                <div>Decisões (ADR)</div>
-              </div>
-              <div class="wiki-texto">
-                <h2>Arquitetura</h2>
-                <div class="meta">wiki local · projeto fishing-rod · editada pelo orquestrador-fr</div>
-
-                <h3>A cadeia</h3>
-                <p><code>Ambiente → Projeto → Sessão → Chat</code>. Cada andar acrescenta o próprio nome e delega o resto — não é repasse, é composição.</p>
-
-                <h3>Quem atende o quê</h3>
-                <p>Cada andar só trata os comandos que são dele e passa o resto adiante. A Sessão é o último andar: se parece comando e ninguém atendeu, a responsabilidade de dizer "não conheço" é dela.</p>
-
-                <h3>Camada de pintura</h3>
-                <p>A interface não guarda estado de negócio. Ela pergunta ao núcleo, compara antes e depois, e redesenha. Trocar a interface não deve tocar em nenhuma regra.</p>
-              </div>
-            </div>
-          </div>
+          <!-- ---------- VISAO: SEMANA ---------- -->
+          <div class="visao escondido" id="visao-semana"></div>
 
           <!-- ---------- VISAO: KANBAN ---------- -->
-          <div class="visao escondido" id="visao-kanban">
-            <div class="kanban">
-              <div class="coluna">
-                <div class="titulo"><span>A FAZER</span><span>3</span></div>
-                <div class="card">Abstrair a porta do LLM com vocabulário de sessão viva<span class="tag">arquitetura</span></div>
-                <div class="card">Persistir e retomar sessão (salvar memória + chats)<span class="tag">núcleo</span></div>
-                <div class="card">Renomear projeto pela interface<span class="tag">ui</span></div>
-              </div>
-              <div class="coluna">
-                <div class="titulo"><span>FAZENDO</span><span>2</span></div>
-                <div class="card">Dividir Agente em definição reusável e client vivo<span class="tag">rod-maker</span></div>
-                <div class="card">Tornar a cadeia enviar() assíncrona<span class="tag">núcleo</span></div>
-              </div>
-              <div class="coluna">
-                <div class="titulo"><span>FEITO</span><span>3</span></div>
-                <div class="card">Memória da Sessão como blackboard entre chats<span class="tag">decidido</span></div>
-                <div class="card">Árvore de sessões e chats na sidebar<span class="tag">ui</span></div>
-                <div class="card">Comandos por andar da cadeia<span class="tag">núcleo</span></div>
-              </div>
-            </div>
-          </div>
+          <div class="visao escondido" id="visao-kanban"></div>
+
+          <!-- ---------- VISAO: WIKI ---------- -->
+          <div class="visao escondido" id="visao-wiki"></div>
 
         </div>
 
@@ -462,94 +548,436 @@ body{
 </div>
 
 <script>
-/* ============ DADOS FALSOS, so para a tela ter o que pintar ============ */
+/* ==================================================================
+   DADOS FALSOS, so para a tela ter o que pintar.
+   Cenario: rotina comercial da Anexo descrita pelo cliente.
+   ================================================================== */
+
+/* ------------------ PROJETOS = os fluxos de trabalho ------------------ */
 const PROJETOS = [
   {
-    nome: "fishing-rod",
+    nome: "conteudo-e-criativos",
+    fluxo: "conteudo",
+    orquestrador: "orquestrador-conteudo",
     sessoes: [
       {
-        nome: "refatorar-sessao",
-        iteracoes: 7,
+        nome: "serie-agencia-nao-escala",
+        tarefa: "Série «agência não escala» — 4 roteiros",
+        iteracoes: 9,
         chats: [
-          {nome:"orquestrador-fr", papel:"orquestrador"},
-          {nome:"rod-maker",       papel:"sub-agente"},
-          {nome:"pesquisa-sdk",    papel:"sub-agente"}
+          {nome:"orquestrador-conteudo", papel:"orquestrador"},
+          {nome:"curador-de-temas",      papel:"sub-agente"},
+          {nome:"roteirista",            papel:"sub-agente"},
+          {nome:"diretor-de-gravacao",   papel:"sub-agente"}
         ],
         memoria: [
-          {chave:"contrato-enviar", autor:"rod-maker",       valor:"enviar() vira async em toda a cadeia; a Sessão passa a aguardar o client vivo."},
-          {chave:"papel-unico",     autor:"orquestrador-fr", valor:"Uma sessão só admite um orquestrador; sub-agentes podem ser vários."},
-          {chave:"pendencia-wiki",  autor:"pesquisa-sdk",    valor:"Promover a decisão de arquitetura para a página \"Arquitetura\" da WIKI."}
+          {chave:"angulo-da-serie",  autor:"curador-de-temas",   valor:"Dor escolhida: o dono é o gargalo, a agência trava no operacional. Preço fica fora — a WIKI marca isso como assunto de fundo de funil."},
+          {chave:"provas-liberadas", autor:"curador-de-temas",   valor:"Só o case Marlon (3x lead em 60 dias) está autorizado. Os outros dois seguem sem liberação de uso."},
+          {chave:"formato",          autor:"roteirista",         valor:"4 vídeos de 60-90s, câmera na mão, sem teleprompter. Gancho de dor nos 3 primeiros segundos."},
+          {chave:"pedido-de-pagina", autor:"roteirista",         valor:"Vídeo 2 fecha em oferta de diagnóstico. Abri card de LP dedicada no projeto paginas-cro."},
+          {chave:"ordem-de-gravacao",autor:"diretor-de-gravacao",valor:"Terça: gravar 2 e 4 primeiro (mesma roupa, mesma luz). 1 e 3 depois."}
         ]
       },
       {
-        nome: "desenho-da-tui",
-        iteracoes: 12,
-        chats: [{nome:"orquestrador-fr", papel:"orquestrador"}],
+        nome: "cortes-do-bruto-14",
+        tarefa: "Bruto #14 — tirar 6 cortes sem regravar",
+        iteracoes: 4,
+        chats: [
+          {nome:"orquestrador-conteudo", papel:"orquestrador"},
+          {nome:"editor-de-cortes",      papel:"sub-agente"}
+        ],
         memoria: [
-          {chave:"card-e-pintura", autor:"orquestrador-fr", valor:"Quais cards estão abertos é estado de tela, não de negócio."}
+          {chave:"reaproveitamento", autor:"editor-de-cortes", valor:"O bruto #14 já rendeu 3 cortes. Restam 2 blocos aproveitáveis: 04:12-05:30 e 11:40-12:20."},
+          {chave:"sem-regravacao",   autor:"orquestrador-conteudo", valor:"Esta tarefa entrou direto no pós-gravação. Nada aqui volta para a terça."}
         ]
       }
     ]
   },
   {
-    nome: "tcc-visao-computacional",
+    nome: "midia-paga",
+    fluxo: "midia",
+    orquestrador: "orquestrador-midia",
     sessoes: [
       {
-        nome: "revisao-bibliografica",
-        iteracoes: 3,
-        chats: [{nome:"orquestrador-fr", papel:"orquestrador"}, {nome:"leitor-artigos", papel:"sub-agente"}],
-        memoria: [{chave:"escopo", autor:"orquestrador-fr", valor:"Focar em detecção em vídeo, ignorar segmentação."}]
+        nome: "campanha-diagnostico",
+        tarefa: "Subir campanha do diagnóstico — 3 criativos",
+        iteracoes: 6,
+        chats: [
+          {nome:"orquestrador-midia",    papel:"orquestrador"},
+          {nome:"copy-de-criativo",      papel:"sub-agente"},
+          {nome:"analista-de-campanha",  papel:"sub-agente"}
+        ],
+        memoria: [
+          {chave:"criativos-em-uso", autor:"analista-de-campanha", valor:"2 criativos saem do bruto #14, 1 sai da série nova. Nenhum pede regravação."},
+          {chave:"pagina-de-destino",autor:"orquestrador-midia",   valor:"A campanha aponta para a LP-diagnostico. Enquanto a página não subir, o orçamento fica segurado."},
+          {chave:"travado-por",      autor:"orquestrador-midia",   valor:"Dependência aberta: paginas-cro / lp-diagnostico. Avisar quando fechar."}
+        ]
       }
     ]
   },
   {
-    nome: "projeto-padrao",
+    nome: "paginas-cro",
+    fluxo: "cro",
+    orquestrador: "orquestrador-cro",
     sessoes: [
-      {nome:"projeto-padrao-sessao", iteracoes:0, chats:[{nome:"orquestrador-fr", papel:"orquestrador"}], memoria:[]}
+      {
+        nome: "lp-diagnostico",
+        tarefa: "LP dedicada — oferta de diagnóstico",
+        iteracoes: 5,
+        chats: [
+          {nome:"orquestrador-cro",       papel:"orquestrador"},
+          {nome:"copy-de-pagina",         papel:"sub-agente"},
+          {nome:"analista-de-conversao",  papel:"sub-agente"}
+        ],
+        memoria: [
+          {chave:"origem-do-pedido", autor:"orquestrador-cro",  valor:"Página nasceu do vídeo 2 da série e também vai atender o e-mail marketing de sexta. Uma página, dois canais."},
+          {chave:"promessa",         autor:"copy-de-pagina",    valor:"O título da página repete a frase exata do gancho do vídeo. Quando muda, a conversão cai — está na WIKI."},
+          {chave:"quem-espera",      autor:"orquestrador-cro",  valor:"midia-paga está travada esperando esta página. Prioridade da quinta."}
+        ]
+      }
+    ]
+  },
+  {
+    nome: "outbound-linkedin",
+    fluxo: "outbound",
+    orquestrador: "orquestrador-outbound",
+    sessoes: [
+      {
+        nome: "cadencia-de-mensagens",
+        tarefa: "Cadência de mensagens ativas — 40 contas",
+        iteracoes: 8,
+        chats: [
+          {nome:"orquestrador-outbound", papel:"orquestrador"},
+          {nome:"prospeccao-linkedin",   papel:"sub-agente"},
+          {nome:"copy-de-mensagem",      papel:"sub-agente"}
+        ],
+        memoria: [
+          {chave:"gatilho-de-abordagem", autor:"prospeccao-linkedin", valor:"A abordagem entra citando o vídeo que a pessoa curtiu. Conteúdo e outbound usam o mesmo material gravado."},
+          {chave:"destino",              autor:"copy-de-mensagem",    valor:"Quem responde vai para a mesma LP-diagnostico da campanha paga."}
+        ]
+      }
+    ]
+  },
+  {
+    nome: "inbox-e-dm",
+    fluxo: "relacao",
+    orquestrador: "orquestrador-inbox",
+    sessoes: [
+      {
+        nome: "triagem-do-dia",
+        tarefa: "Triagem diária — DM, LinkedIn e caixa de e-mail",
+        iteracoes: 22,
+        chats: [
+          {nome:"orquestrador-inbox",  papel:"orquestrador"},
+          {nome:"triagem-de-dm",       papel:"sub-agente"},
+          {nome:"resposta-de-email",   papel:"sub-agente"}
+        ],
+        memoria: [
+          {chave:"criterio-de-passagem", autor:"triagem-de-dm", valor:"Só sobe para você o que tem intenção de compra. Dúvida de conteúdo, o agente responde sozinho usando a WIKI."},
+          {chave:"pauta-que-nasceu-aqui",autor:"triagem-de-dm", valor:"3 pessoas perguntaram a mesma coisa esta semana. Virou sugestão de tema para a curadoria de segunda."}
+        ]
+      }
     ]
   }
 ];
 
-// conversas de exemplo por chat
+/* ------------------ CARDS: uma so fonte para Kanban e Semana ------------------ */
+const FAIXAS = [
+  {nome:"PRÉ-GRAVAÇÃO", eixo:false, colunas:["Curadoria e temas","Roteiro","Pronto para gravar"]},
+  {nome:"GRAVAÇÃO",     eixo:true,  colunas:["Bloco de terça"]},
+  {nome:"PÓS-GRAVAÇÃO", eixo:false, colunas:["Edição e cortes","Publicação","Campanha e páginas"]}
+];
+
+const CARDS = [
+  // --- pre ---
+  {t:"Levantar temas da semana — dor de operação", fluxo:"conteudo", dia:"seg", col:"Curadoria e temas", proj:0, sess:null,
+   selo:"3 temas vieram das DMs desta semana"},
+  {t:"Escolher provas e cases liberados",          fluxo:"conteudo", dia:"seg", col:"Curadoria e temas", proj:0, sess:null},
+  {t:"Série «agência não escala» — 4 roteiros",    fluxo:"conteudo", dia:"seg", col:"Roteiro", proj:0, sess:0,
+   elo:"→ pediu a LP-diagnostico"},
+  {t:"Roteiro do criativo de retargeting",         fluxo:"midia",    dia:"seg", col:"Roteiro", proj:1, sess:null},
+  {t:"Vídeos 1 e 2 — roteiro aprovado",            fluxo:"conteudo", dia:"ter", col:"Pronto para gravar", proj:0, sess:null},
+  {t:"Depoimento do Marlon — pauta pronta",        fluxo:"conteudo", dia:"ter", col:"Pronto para gravar", proj:0, sess:null},
+
+  // --- eixo ---
+  {t:"Bloco 1 — 4 vídeos da série",                fluxo:"conteudo", dia:"ter", col:"Bloco de terça", proj:0, sess:null,
+   selo:"vira material dos dois fluxos"},
+  {t:"Bloco 2 — 3 variações de gancho",            fluxo:"midia",    dia:"ter", col:"Bloco de terça", proj:1, sess:null},
+
+  // --- pos ---
+  {t:"Bruto #14 — tirar 6 cortes sem regravar",    fluxo:"conteudo", dia:"qua", col:"Edição e cortes", proj:0, sess:1,
+   selo:"↩ entrou direto no pós — sem gravação nova"},
+  {t:"Legendas e capas dos 4 vídeos",              fluxo:"conteudo", dia:"qua", col:"Edição e cortes", proj:0, sess:null},
+  {t:"Subir 6 cortes — IG, TikTok, LinkedIn, YT",  fluxo:"conteudo", dia:"qui", col:"Publicação", proj:0, sess:null},
+  {t:"Post de autoridade no LinkedIn",             fluxo:"outbound", dia:"qui", col:"Publicação", proj:3, sess:null},
+  {t:"LP dedicada — oferta de diagnóstico",        fluxo:"cro",      dia:"qui", col:"Campanha e páginas", proj:2, sess:0,
+   elo:"↩ pedida pelo roteiro · serve 2 canais"},
+  {t:"Subir campanha do diagnóstico — 3 criativos",fluxo:"midia",    dia:"qui", col:"Campanha e páginas", proj:1, sess:0,
+   selo:"⏸ travado: espera a LP subir"},
+  {t:"E-mail marketing — mesma oferta",            fluxo:"outbound", dia:"sex", col:"Campanha e páginas", proj:3, sess:null,
+   elo:"→ usa a mesma LP-diagnostico"},
+  {t:"Cadência de mensagens ativas — 40 contas",   fluxo:"outbound", dia:"sex", col:"Campanha e páginas", proj:3, sess:0,
+   elo:"↩ abre citando o vídeo curtido"}
+];
+
+/* ------------------ SEMANA: o ritmo que o cliente descreveu ------------------ */
+const DIAS = [
+  {sigla:"dom", nome:"DOMINGO", foco:"Manejo da semana",           eixo:false, calmo:false, acao:"kanban"},
+  {sigla:"seg", nome:"SEGUNDA", foco:"Análise, curadoria e roteiro",eixo:false, calmo:false},
+  {sigla:"ter", nome:"TERÇA",   foco:"Gravação",                    eixo:true,  calmo:false},
+  {sigla:"qua", nome:"QUARTA",  foco:"Edição e cortes",             eixo:false, calmo:false},
+  {sigla:"qui", nome:"QUINTA",  foco:"Publicação e campanha",       eixo:false, calmo:false},
+  {sigla:"sex", nome:"SEXTA",   foco:"Páginas, e-mail e outbound",  eixo:false, calmo:false},
+  {sigla:"sab", nome:"SÁBADO",  foco:"Reserva / estoque pronto",    eixo:false, calmo:true}
+];
+
+const CONTINUOS = [
+  {t:"Responder DMs — Instagram",        fluxo:"relacao",  proj:4, sess:0},
+  {t:"Responder chats — LinkedIn",       fluxo:"relacao",  proj:4, sess:0},
+  {t:"Caixa de e-mail — triagem",        fluxo:"relacao",  proj:4, sess:0},
+  {t:"Mensagens ativas — LinkedIn",      fluxo:"outbound", proj:3, sess:0}
+];
+
+/* ------------------ WIKI: conhecimento global do ambiente ------------------ */
+const WIKI = [
+  {
+    titulo:"Oferta e ICP — Anexo",
+    meta:"wiki do ambiente · vale para todos os projetos · última edição pelo orquestrador-conteudo",
+    html:`
+      <h3>Quem compra</h3>
+      <p>Dono de agência ou prestador de serviço B2B que travou entre 30 e 100 mil por mês. O dono ainda vende, entrega e opera — ele é o gargalo.</p>
+      <h3>Oferta de entrada</h3>
+      <p>Diagnóstico comercial de 45 minutos. É a oferta que todo criativo, e-mail e mensagem ativa empurra.</p>
+      <h3>Oferta principal</h3>
+      <p>Implantação do processo comercial: análise, conteúdo, tráfego e outbound rodando junto.</p>
+      <h3>Provas que podem ser usadas</h3>
+      <ul>
+        <li>Case Marlon — 3x lead em 60 dias. <b>Liberado.</b></li>
+        <li>Outros dois cases — <b>sem autorização de uso</b>, não citar.</li>
+      </ul>
+      <div class="nota">Todo agente de qualquer projeto lê esta página antes de escrever qualquer coisa. É por isso que você não repete o mesmo briefing em cada chat.</div>`
+  },
+  {
+    titulo:"Pilares e temas",
+    meta:"wiki do ambiente · alimenta a curadoria de segunda",
+    html:`
+      <h3>Os quatro pilares</h3>
+      <ul>
+        <li><b>Diagnóstico</b> — o que trava a operação de quem vende serviço.</li>
+        <li><b>Método</b> — como a Anexo resolve, passo a passo.</li>
+        <li><b>Prova</b> — quem já passou por isso.</li>
+        <li><b>Bastidor</b> — como a gente opera por dentro.</li>
+      </ul>
+      <h3>Regras de rodízio</h3>
+      <p>Nenhum pilar duas semanas seguidas na mesma rede. Prova nunca abre a série — ela fecha.</p>
+      <h3>Fora do topo de funil</h3>
+      <p>Preço e comparação com concorrente só entram depois do diagnóstico.</p>
+      <h3>De onde os temas nascem</h3>
+      <p>Da curadoria de segunda, mas também das DMs e do inbox: pergunta repetida três vezes na semana vira pauta automaticamente.</p>`
+  },
+  {
+    titulo:"Tom de voz e formatos",
+    meta:"wiki do ambiente · usada por roteirista, copy de criativo, copy de página e copy de mensagem",
+    html:`
+      <h3>Como a Anexo fala</h3>
+      <p>Frase curta. Sem jargão de marketing. Nada de "transformar sua empresa". Sempre uma dor concreta antes de qualquer promessa.</p>
+      <h3>O gancho</h3>
+      <p>Três primeiros segundos, sempre. Se o gancho não é uma dor reconhecível, o roteiro volta.</p>
+      <h3>Formatos por rede</h3>
+      <ul>
+        <li><b>Instagram / TikTok</b> — 45 a 90s, vertical, legenda queimada.</li>
+        <li><b>LinkedIn</b> — vídeo até 2 min, acompanhado de texto de quatro parágrafos.</li>
+        <li><b>YouTube Shorts</b> — reaproveita o corte do TikTok, sem edição nova.</li>
+      </ul>`
+  },
+  {
+    titulo:"Acervo de gravações",
+    meta:"wiki do ambiente · consultada antes de marcar qualquer gravação nova",
+    html:`
+      <div class="nota">Regra do ambiente: nenhuma pauta vira gravação sem antes passar por esta página. Se o material já existe, a tarefa entra direto no pós-gravação.</div>
+      <h3>Brutos disponíveis</h3>
+      <ul>
+        <li><b>bruto #14</b> — 12/09, dor de operação → 3 cortes, 2 criativos, 1 página. Sobram 2 blocos aproveitáveis.</li>
+        <li><b>bruto #12</b> — 05/09, método → 4 cortes, 1 criativo.</li>
+        <li><b>bruto #09</b> — 29/08, depoimento do Marlon → 2 cortes, prova usada em 3 páginas.</li>
+      </ul>
+      <h3>Por que isso importa</h3>
+      <p>Duas das três campanhas de setembro não precisaram de gravação nova. A terça só é gargalo quando o acervo não é consultado.</p>
+      <h3>O que a gravação alimenta</h3>
+      <p>O mesmo bruto vira corte orgânico, criativo de campanha paga e gancho de mensagem ativa no LinkedIn. É um material, três fluxos.</p>`
+  },
+  {
+    titulo:"Páginas e aprendizados de CRO",
+    meta:"wiki do ambiente · transversal — CRO não é um fluxo, mora dentro dos outros",
+    html:`
+      <h3>Páginas ativas</h3>
+      <ul>
+        <li><b>LP-diagnostico</b> — nasceu do vídeo 2 da série; atende a campanha paga e o e-mail de sexta.</li>
+        <li><b>LP-metodo</b> — destino do conteúdo orgânico de LinkedIn.</li>
+      </ul>
+      <h3>O que já aprendemos</h3>
+      <ul>
+        <li>O título da página tem que repetir a frase exata do gancho do criativo. Quando muda, a conversão cai pela metade.</li>
+        <li>Página dedicada por criativo converte mais que a home, mesmo com menos volume.</li>
+        <li>E-mail marketing e anúncio podem dividir a mesma página quando a oferta é a mesma.</li>
+      </ul>
+      <h3>Quando abrir uma página nova</h3>
+      <p>Sempre que um criativo, post ou e-mail carregar uma oferta que a página atual não promete com as mesmas palavras.</p>`
+  },
+  {
+    titulo:"Cadência da semana",
+    meta:"wiki do ambiente · o ritmo que orienta o Kanban",
+    html:`
+      <h3>O eixo</h3>
+      <p>A gravação de terça é o marco. Toda tarefa é <b>pré-gravação</b> ou <b>pós-gravação</b> — e nada obriga a tarefa a começar no início.</p>
+      <h3>O ritmo</h3>
+      <ul>
+        <li><b>Domingo</b> — manejo: priorizar e montar os cards da semana.</li>
+        <li><b>Segunda</b> — análise, curadoria e roteirização.</li>
+        <li><b>Terça</b> — gravação, em bloco.</li>
+        <li><b>Quarta</b> — edição e cortes.</li>
+        <li><b>Quinta em diante</b> — publicação, campanhas e páginas, com estoque sobrando para a semana seguinte.</li>
+      </ul>
+      <h3>O que não tem dia</h3>
+      <p>Inbox, DM de Instagram, chat de LinkedIn e mensagens ativas rodam todo dia. Eles não entram na régua — têm sessão própria que fica sempre aberta.</p>`
+  }
+];
+
+/* ------------------ conversas de exemplo (chave: sessao/chat) ------------------ */
 const MENSAGENS = {
-  "orquestrador-fr": [
-    {tipo:"usuario", autor:"pedro", texto:"quero separar o Agente em definição e client vivo. começa pelo chat do rod-maker."},
-    {tipo:"agente",  autor:"OrquestradorTeste", texto:"Fechado. Abri um chat pro rod-maker nesta mesma sessão e deixei o contrato anotado na memória, pra ele não precisar que você repita nada. Pode acompanhar pela aba dele."},
-    {tipo:"sistema", autor:"comando", texto:"Novo chat criado: [1] rod-maker"},
-    {tipo:"usuario", autor:"pedro", texto:"/chats"},
-    {tipo:"sistema", autor:"comando", texto:"* [0] orquestrador-fr[orquestrador]\n  [1] rod-maker[sub-agente]\n  [2] pesquisa-sdk[sub-agente]"},
-    {tipo:"usuario", autor:"pedro", texto:"e a wiki do projeto, já reflete essa decisão?"},
-    {tipo:"agente",  autor:"OrquestradorTeste", texto:"Ainda não. O rod-maker anotou <code>contrato-enviar</code> na memória há 2 iterações; posso promover isso pra página \"Arquitetura\" da WIKI quando você aprovar."}
+  "serie-agencia-nao-escala/orquestrador-conteudo": [
+    {tipo:"sistema", autor:"comando", texto:"Sessão aberta a partir do card «Série «agência não escala» — 4 roteiros» · WIKI do ambiente carregada"},
+    {tipo:"usuario", autor:"cliente", texto:"quero 4 vídeos dessa semana em cima da dor de operação. começa pela curadoria."},
+    {tipo:"agente",  autor:"OrquestradorConteudo", texto:"Antes de abrir a curadoria eu chequei o <code>Acervo de gravações</code> da WIKI: o bruto #14 ainda tem 2 blocos sobre exatamente essa dor. Sugiro 3 vídeos novos na terça e 1 aproveitado — economiza um quarto do bloco de gravação."},
+    {tipo:"usuario", autor:"cliente", texto:"boa. faz assim."},
+    {tipo:"sistema", autor:"comando", texto:"Novos chats na sessão: [1] curador-de-temas  [2] roteirista  [3] diretor-de-gravacao"},
+    {tipo:"agente",  autor:"OrquestradorConteudo", texto:"Abri os três. Eles já leram a oferta, o ICP e o tom de voz na WIKI — você não precisa repetir nada disso. O que for decidido aqui fica na memória da sessão, então o roteirista não pergunta de novo o que o curador já resolveu."},
+    {tipo:"usuario", autor:"cliente", texto:"e o card do bruto #14, entra onde?"},
+    {tipo:"agente",  autor:"OrquestradorConteudo", texto:"Ele já está no Kanban, na coluna de edição — <b>direto no pós-gravação</b>, sem passar pela terça. É o caso que você descreveu: material que existe não volta pro começo do fluxo."}
   ],
-  "rod-maker": [
-    {tipo:"sistema", autor:"comando", texto:"Chat aberto pelo orquestrador-fr · memória da sessão carregada (3 anotações)"},
-    {tipo:"agente",  autor:"AgenteRodMaker", texto:"Li <code>contrato-enviar</code> na memória, então já sei o alvo sem você repetir. Vou dividir o Agente em duas peças: a definição (nome, papel, modelo, ferramentas, regras) e o client vivo, que nasce por chat."},
-    {tipo:"usuario", autor:"pedro", texto:"e o que acontece com quem já usa responder()?"},
-    {tipo:"agente",  autor:"AgenteRodMaker", texto:"A definição continua respondendo pela assinatura antiga enquanto o client não existe — assim a TUI não quebra no meio da refatoração. Anotei isso como <code>degrau-de-migracao</code> pro orquestrador ver."}
+  "serie-agencia-nao-escala/curador-de-temas": [
+    {tipo:"sistema", autor:"comando", texto:"Chat aberto pelo orquestrador-conteudo · WIKI carregada · memória da sessão: 0 anotações"},
+    {tipo:"agente",  autor:"CuradorDeTemas", texto:"Puxei os pilares da WIKI e cruzei com o que apareceu no inbox: <b>três pessoas perguntaram a mesma coisa</b> esta semana — como parar de ser o único que vende. Isso é pilar Diagnóstico e tem demanda comprovada."},
+    {tipo:"usuario", autor:"cliente", texto:"e prova, dá pra usar qual?"},
+    {tipo:"agente",  autor:"CuradorDeTemas", texto:"Só o Marlon. Os outros dois seguem sem autorização — está registrado na página de oferta. Anotei <code>provas-liberadas</code> na memória pro roteirista não escorregar nisso."},
+    {tipo:"sistema", autor:"comando", texto:"Memória da sessão atualizada: angulo-da-serie, provas-liberadas"}
   ],
-  "pesquisa-sdk": [
-    {tipo:"usuario", autor:"pedro", texto:"o client do SDK aguenta várias sessões abertas ao mesmo tempo?"},
-    {tipo:"agente",  autor:"AgenteRodMaker", texto:"Levantei o que a documentação diz e deixei o resumo na memória da sessão, em <code>pendencia-wiki</code>. O ponto que importa pro nosso desenho: o loop e o histórico ficam do lado do client, então cada chat precisa do seu."}
+  "serie-agencia-nao-escala/roteirista": [
+    {tipo:"sistema", autor:"comando", texto:"Chat aberto · memória da sessão carregada (2 anotações)"},
+    {tipo:"agente",  autor:"Roteirista", texto:"Já sei o ângulo e as provas pela memória, então vou direto ao roteiro. Quatro vídeos de 60 a 90s, gancho de dor nos 3 primeiros segundos, como manda o tom de voz."},
+    {tipo:"usuario", autor:"cliente", texto:"o vídeo 2 fecha em quê?"},
+    {tipo:"agente",  autor:"Roteirista", texto:"No diagnóstico. E aí aparece um problema: a home não promete diagnóstico com as mesmas palavras do gancho — a WIKI de CRO diz que isso derruba a conversão pela metade. <b>Abri um card de LP dedicada no projeto paginas-cro.</b>"},
+    {tipo:"sistema", autor:"comando", texto:"Card criado em outro projeto: paginas-cro → «LP dedicada — oferta de diagnóstico» (quinta)"},
+    {tipo:"usuario", autor:"cliente", texto:"perfeito, é exatamente assim que funciona na minha cabeça"},
+    {tipo:"agente",  autor:"Roteirista", texto:"Anotei <code>pedido-de-pagina</code> na memória. O orquestrador da mídia paga já foi avisado de que a campanha depende dessa página."}
+  ],
+  "serie-agencia-nao-escala/diretor-de-gravacao": [
+    {tipo:"sistema", autor:"comando", texto:"Chat aberto · memória da sessão carregada (4 anotações)"},
+    {tipo:"agente",  autor:"DiretorDeGravacao", texto:"Montei a ordem da terça pensando em troca de roupa e luz: grava 2 e 4 juntos, depois 1 e 3. O vídeo do bruto #14 sai da lista — ele não precisa de câmera."},
+    {tipo:"usuario", autor:"cliente", texto:"quanto tempo de bloco isso dá?"},
+    {tipo:"agente",  autor:"DiretorDeGravacao", texto:"Uma hora e meia, com margem. Sem o reaproveitamento seriam duas. Deixei a ordem em <code>ordem-de-gravacao</code> pra quarta o editor já saber o que veio de onde."}
+  ],
+
+  "cortes-do-bruto-14/orquestrador-conteudo": [
+    {tipo:"sistema", autor:"comando", texto:"Sessão aberta a partir do card «Bruto #14 — tirar 6 cortes sem regravar»"},
+    {tipo:"agente",  autor:"OrquestradorConteudo", texto:"Esta tarefa nasce no pós-gravação. Nada aqui volta pra terça — é o caso de reaproveitar material que já existe em vez de marcar gravação nova."},
+    {tipo:"usuario", autor:"cliente", texto:"esse bruto já rendeu quanto?"},
+    {tipo:"agente",  autor:"OrquestradorConteudo", texto:"Pelo <code>Acervo de gravações</code>: 3 cortes, 2 criativos e 1 página. Sobram 2 blocos aproveitáveis. Chamei o editor pra tirar os 6 cortes de lá."}
+  ],
+  "cortes-do-bruto-14/editor-de-cortes": [
+    {tipo:"sistema", autor:"comando", texto:"Chat aberto pelo orquestrador-conteudo · memória da sessão carregada (1 anotação)"},
+    {tipo:"agente",  autor:"EditorDeCortes", texto:"Os dois blocos que sobram são 04:12-05:30 e 11:40-12:20. Dá pra tirar 6 cortes: 4 orgânicos e 2 com corte mais seco pra virar criativo de campanha."},
+    {tipo:"usuario", autor:"cliente", texto:"os 2 de campanha vão pra qual campanha?"},
+    {tipo:"agente",  autor:"EditorDeCortes", texto:"Pra do diagnóstico. Deixei avisado na sessão da mídia paga — lá já consta que 2 dos 3 criativos vêm daqui e que <b>nenhum pede regravação</b>."}
+  ],
+
+  "campanha-diagnostico/orquestrador-midia": [
+    {tipo:"sistema", autor:"comando", texto:"Sessão aberta a partir do card «Subir campanha do diagnóstico — 3 criativos»"},
+    {tipo:"agente",  autor:"OrquestradorMidia", texto:"Os 3 criativos estão resolvidos: 2 vieram do bruto #14 e 1 da série nova. O que segura a campanha não é criativo — é a página."},
+    {tipo:"usuario", autor:"cliente", texto:"então não sobe ainda?"},
+    {tipo:"agente",  autor:"OrquestradorMidia", texto:"Subir com destino errado queima verba. Marquei <code>travado-por</code> na memória apontando pra <code>paginas-cro / lp-diagnostico</code>. Quando aquele card fechar, esta sessão te avisa e a gente sobe no mesmo dia."},
+    {tipo:"usuario", autor:"cliente", texto:"isso aí é o que mais me atrapalha hoje, ficar perdendo esse fio"},
+    {tipo:"agente",  autor:"OrquestradorMidia", texto:"É por isso que o card carrega o selo de travado no Kanban. O fio fica visível na tela, não na sua cabeça."}
+  ],
+  "campanha-diagnostico/copy-de-criativo": [
+    {tipo:"sistema", autor:"comando", texto:"Chat aberto · WIKI carregada · memória da sessão (2 anotações)"},
+    {tipo:"agente",  autor:"CopyDeCriativo", texto:"Escrevi as 3 variações mantendo a frase do gancho intacta, porque ela precisa bater com o título da página. Tom de voz da WIKI: frase curta, dor antes da promessa."}
+  ],
+  "campanha-diagnostico/analista-de-campanha": [
+    {tipo:"sistema", autor:"comando", texto:"Chat aberto · memória da sessão (3 anotações)"},
+    {tipo:"agente",  autor:"AnalistaDeCampanha", texto:"Estrutura pronta: 1 campanha, 3 conjuntos, 1 criativo por conjunto. Anotei <code>criativos-em-uso</code> pra ficar registrado que dois deles são reaproveitados — se performarem, vale abrir mais blocos do mesmo bruto antes de gravar de novo."}
+  ],
+
+  "lp-diagnostico/orquestrador-cro": [
+    {tipo:"sistema", autor:"comando", texto:"Sessão aberta a partir do card «LP dedicada — oferta de diagnóstico» · card criado pelo projeto conteudo-e-criativos"},
+    {tipo:"agente",  autor:"OrquestradorCro", texto:"Esta página não nasceu de um pedido seu — nasceu do vídeo 2 da série. E ela também vai servir o e-mail marketing de sexta, porque a oferta é a mesma. <b>Uma página, dois canais.</b>"},
+    {tipo:"usuario", autor:"cliente", texto:"é isso. minhas páginas sempre nascem no meio de outro fluxo"},
+    {tipo:"agente",  autor:"OrquestradorCro", texto:"Por isso o projeto de páginas fica separado mas os cards chegam de fora. Quem está esperando esta página: <code>midia-paga</code>. Prioridade da quinta."}
+  ],
+  "lp-diagnostico/copy-de-pagina": [
+    {tipo:"sistema", autor:"comando", texto:"Chat aberto · WIKI carregada · memória da sessão (1 anotação)"},
+    {tipo:"agente",  autor:"CopyDePagina", texto:"Peguei o gancho do vídeo 2 e usei a frase exata como título da página. É a regra que está na WIKI de CRO — quando o título muda, a conversão cai pela metade."},
+    {tipo:"usuario", autor:"cliente", texto:"e o resto da página?"},
+    {tipo:"agente",  autor:"CopyDePagina", texto:"Dor, método em 3 passos, prova do Marlon (a única liberada) e o diagnóstico como única ação. Sem preço — a WIKI marca preço como fundo de funil."}
+  ],
+  "lp-diagnostico/analista-de-conversao": [
+    {tipo:"sistema", autor:"comando", texto:"Chat aberto · memória da sessão (3 anotações)"},
+    {tipo:"agente",  autor:"AnalistaDeConversao", texto:"Comparando com a LP-metodo: página dedicada por criativo converteu mais mesmo com menos volume. Vale promover esse achado para a WIKI, aí todos os projetos passam a assumir isso como padrão."}
+  ],
+
+  "cadencia-de-mensagens/orquestrador-outbound": [
+    {tipo:"sistema", autor:"comando", texto:"Sessão aberta a partir do card «Cadência de mensagens ativas — 40 contas»"},
+    {tipo:"agente",  autor:"OrquestradorOutbound", texto:"A lista das 40 saiu de quem interagiu com os vídeos da semana. O outbound não começa do zero — ele pega carona no material que já foi gravado."},
+    {tipo:"usuario", autor:"cliente", texto:"exato, é a mesma gravação servindo os dois lados"},
+    {tipo:"agente",  autor:"OrquestradorOutbound", texto:"E o destino também é o mesmo: quem responde vai pra LP-diagnostico. Um bruto, um post, um criativo, uma mensagem, uma página."}
+  ],
+  "cadencia-de-mensagens/prospeccao-linkedin": [
+    {tipo:"sistema", autor:"comando", texto:"Chat aberto · memória da sessão (1 anotação)"},
+    {tipo:"agente",  autor:"ProspeccaoLinkedin", texto:"Separei as 40 contas por qual vídeo elas curtiram. A abordagem abre citando exatamente esse vídeo — anotei como <code>gatilho-de-abordagem</code>."}
+  ],
+  "cadencia-de-mensagens/copy-de-mensagem": [
+    {tipo:"sistema", autor:"comando", texto:"Chat aberto · WIKI carregada · memória da sessão (2 anotações)"},
+    {tipo:"agente",  autor:"CopyDeMensagem", texto:"4 mensagens por perfil de gancho, todas na mesma voz da WIKI. Nenhuma cita preço e nenhuma usa case não liberado."}
+  ],
+
+  "triagem-do-dia/orquestrador-inbox": [
+    {tipo:"sistema", autor:"comando", texto:"Sessão contínua · não entra na régua da semana · roda todo dia"},
+    {tipo:"agente",  autor:"OrquestradorInbox", texto:"Hoje: 34 DMs, 12 chats de LinkedIn e 19 e-mails. Os agentes já responderam 51 sozinhos usando a WIKI. <b>Sobraram 14 pra você</b>, todos com intenção de compra."},
+    {tipo:"usuario", autor:"cliente", texto:"e apareceu alguma coisa que vira conteúdo?"},
+    {tipo:"agente",  autor:"OrquestradorInbox", texto:"Sim. Três pessoas perguntaram a mesma coisa: como parar de ser o único que vende. Mandei isso pra curadoria de segunda — virou card no Kanban."},
+    {tipo:"sistema", autor:"comando", texto:"Card criado em outro projeto: conteudo-e-criativos → «Levantar temas da semana — dor de operação» (segunda)"}
+  ],
+  "triagem-do-dia/triagem-de-dm": [
+    {tipo:"sistema", autor:"comando", texto:"Chat aberto · WIKI carregada"},
+    {tipo:"agente",  autor:"TriagemDeDm", texto:"Meu critério está em <code>criterio-de-passagem</code>: dúvida de conteúdo eu respondo, intenção de compra sobe pra você. Nada é apagado — o que eu respondi fica listado se você quiser conferir."}
+  ],
+  "triagem-do-dia/resposta-de-email": [
+    {tipo:"sistema", autor:"comando", texto:"Chat aberto · WIKI carregada"},
+    {tipo:"agente",  autor:"RespostaDeEmail", texto:"19 e-mails: 11 respondidos com a oferta de diagnóstico e o link da LP, 5 arquivados, 3 esperando você. Nenhum falou de preço."}
   ]
 };
 
-const MENSAGEM_PADRAO = [
-  {tipo:"sistema", autor:"comando", texto:"Chat novo · nenhuma mensagem ainda"}
-];
+const MENSAGEM_PADRAO = [{tipo:"sistema", autor:"comando", texto:"Chat novo · nenhuma mensagem ainda"}];
 
 /* ============ ESTADO DA TELA (so pintura) ============ */
-let iProjeto = 0, iSessao = 0, iChat = 0, visao = "chat";
+let iProjeto = 0, iSessao = 0, iChat = 0, visao = "chat", iWiki = 0;
 
 const $ = id => document.getElementById(id);
 const projeto = () => PROJETOS[iProjeto];
 const sessao  = () => projeto().sessoes[iSessao];
 const chat    = () => sessao().chats[iChat];
+const chaveMsg= () => sessao().nome + "/" + chat().nome;
 
-/* ============ PINTURA ============ */
+const slug = txt => txt.toLowerCase()
+  .normalize("NFD").replace(/[̀-ͯ]/g,"")
+  .replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,34);
+
+/* ============ PINTURA: SIDEBAR ============ */
 function pintarProjetos(){
   $("projeto-ativo").textContent = projeto().nome;
   $("lista-projetos").innerHTML = PROJETOS.map((p,i) =>
-    `<div class="item ${i===iProjeto?"ativo":""}" data-projeto="${i}">
+    `<div class="item ${i===iProjeto?"ativo":""}" data-projeto="${i}"
+          style="border-left-color:var(--f-${p.fluxo})">
        ${p.nome}<span class="contagem">${p.sessoes.length}</span>
      </div>`).join("");
 }
@@ -559,6 +987,14 @@ function pintarSessoes(){
     `<div class="item ${i===iSessao?"ativo":""}" data-sessao="${i}">
        ${s.nome}<span class="contagem">${s.chats.length} chats</span>
      </div>`).join("");
+}
+
+/* ============ PINTURA: CHAT ============ */
+function pintarOrigem(){
+  const t = sessao().tarefa;
+  $("origem").innerHTML = t
+    ? `sessão aberta a partir do card &nbsp;<b>«${t}»</b>`
+    : `sessão avulsa`;
 }
 
 function pintarAbas(){
@@ -571,7 +1007,7 @@ function pintarAbas(){
 }
 
 function pintarChat(){
-  const msgs = MENSAGENS[chat().nome] || MENSAGEM_PADRAO;
+  const msgs = MENSAGENS[chaveMsg()] || MENSAGEM_PADRAO;
   $("visao-chat").innerHTML = msgs.map(m =>
     `<div class="msg ${m.tipo}">
        <span class="autor">${m.autor}</span>
@@ -589,16 +1025,117 @@ function pintarMemoria(){
              <span class="autor">por ${a.autor}</span>
              <span class="valor">${a.valor}</span>
            </div>`).join("")
-      : `<div class="vazio">Nenhuma anotação ainda. O que os agentes desta sessão escreverem aparece aqui.</div>`
+      : `<div class="vazio">Nenhuma anotação ainda. O que os agentes desta sessão escreverem aparece aqui — e todo chat novo já nasce lendo isso.</div>`
   );
 }
 
 function pintarStatus(){
-  $("caminho").textContent = `${projeto().nome} / ${sessao().nome} / ${chat().nome}`;
+  $("caminho").textContent = `comercial-anexo / ${projeto().nome} / ${sessao().nome} / ${chat().nome}`;
   $("metricas").textContent =
     `| iterações: ${sessao().iteracoes} | memória: ${sessao().memoria.length} anotações`;
 }
 
+/* ============ PINTURA: KANBAN ============ */
+function pintarCard(c, i){
+  const temSessao = c.sess !== null && c.sess !== undefined;
+  return `<div class="card ${c.fluxo} ${temSessao?"ativa-sessao":""}" data-card="${i}">
+    ${c.t}
+    ${c.selo ? `<span class="selo">${c.selo}</span>` : ""}
+    ${c.elo  ? `<span class="elo">${c.elo}</span>`   : ""}
+    <span class="rodape">
+      <span class="dia">${c.dia}</span>
+      <span class="abrir">${temSessao ? "retomar sessão →" : "abrir sessão →"}</span>
+    </span>
+  </div>`;
+}
+
+function pintarKanban(){
+  const colunaHtml = nome => {
+    const meus = CARDS.map((c,i)=>({c,i})).filter(o => o.c.col === nome);
+    return `<div class="coluna">
+      <div class="titulo"><span>${nome.toUpperCase()}</span><span>${meus.length}</span></div>
+      ${meus.map(o => pintarCard(o.c, o.i)).join("")}
+    </div>`;
+  };
+
+  $("visao-kanban").innerHTML = `
+    <div class="quadro">
+      <div class="legenda">
+        <span>A gravação é o eixo — tudo é antes ou depois dela. Um card pode entrar em qualquer coluna: o que já está gravado pula direto para o pós.</span>
+      </div>
+      <div class="legenda">
+        <span class="pino"><i class="bola" style="background:var(--f-conteudo)"></i>conteúdo</span>
+        <span class="pino"><i class="bola" style="background:var(--f-midia)"></i>mídia paga</span>
+        <span class="pino"><i class="bola" style="background:var(--f-cro)"></i>páginas / CRO</span>
+        <span class="pino"><i class="bola" style="background:var(--f-outbound)"></i>outbound</span>
+        <span class="pino"><i class="bola" style="background:var(--f-relacao)"></i>inbox e DM</span>
+      </div>
+      <div class="kanban">
+        ${FAIXAS.map(f => `
+          <div class="faixa ${f.eixo?"eixo":""}">
+            <div class="rotulo-faixa">${f.nome}</div>
+            <div class="colunas">${f.colunas.map(colunaHtml).join("")}</div>
+          </div>`).join("")}
+      </div>
+    </div>`;
+}
+
+/* ============ PINTURA: SEMANA ============ */
+function pintarSemana(){
+  const miniHtml = (c,i) =>
+    `<div class="mini ${c.fluxo}" data-card="${i}">${c.t}</div>`;
+
+  const diaHtml = d => {
+    const meus = CARDS.map((c,i)=>({c,i})).filter(o => o.c.dia === d.sigla);
+    const corpo = d.acao === "kanban"
+      ? `<div class="mini acao" data-ir="kanban">Manejar a semana no Kanban →</div>
+         <div class="mini acao" data-ir="wiki">Revisar o acervo de gravações →</div>`
+      : (meus.length
+          ? meus.map(o => miniHtml(o.c, o.i)).join("")
+          : `<div class="vazio" style="padding:4px">nada preso a este dia</div>`);
+    return `<div class="dia-col ${d.eixo?"eixo":""} ${d.calmo?"calmo":""}">
+      <div class="nome">${d.nome}${d.eixo?" · EIXO":""}</div>
+      <div class="foco">${d.foco}</div>
+      ${corpo}
+    </div>`;
+  };
+
+  $("visao-semana").innerHTML = `
+    <div class="semana">
+      <div class="intro">
+        A semana tem um ritmo, mas <b>não é uma fila</b>. A terça é o marco: o material gravado nela alimenta tanto as campanhas
+        quanto o outbound. O que já está gravado entra depois da terça sem passar por ela.
+      </div>
+      <div class="regua-semana">${DIAS.map(diaHtml).join("")}</div>
+      <div class="continuos">
+        <div class="titulo">TODO DIA · FLUXOS CONTÍNUOS — não entram na régua, têm sessão sempre aberta</div>
+        <div class="fila">
+          ${CONTINUOS.map(c =>
+            `<div class="mini ${c.fluxo}" data-continuo="${c.proj}-${c.sess}">${c.t}</div>`).join("")}
+        </div>
+      </div>
+    </div>`;
+}
+
+/* ============ PINTURA: WIKI ============ */
+function pintarWiki(){
+  const p = WIKI[iWiki];
+  $("visao-wiki").innerHTML = `
+    <div class="wiki">
+      <div class="wiki-indice">
+        <div class="titulinho">WIKI DO AMBIENTE</div>
+        ${WIKI.map((w,i) =>
+          `<div class="pagina ${i===iWiki?"ativo":""}" data-wiki="${i}">${w.titulo}</div>`).join("")}
+      </div>
+      <div class="wiki-texto">
+        <h2>${p.titulo}</h2>
+        <div class="meta">${p.meta}</div>
+        ${p.html}
+      </div>
+    </div>`;
+}
+
+/* ============ TROCA DE VISAO ============ */
 function pintarVisao(){
   document.querySelectorAll(".visao").forEach(v => v.classList.add("escondido"));
   $("visao-" + visao).classList.remove("escondido");
@@ -607,13 +1144,51 @@ function pintarVisao(){
 }
 
 function pintarTudo(){
-  pintarProjetos(); pintarSessoes(); pintarAbas();
-  pintarChat(); pintarMemoria(); pintarStatus(); pintarVisao();
+  pintarProjetos(); pintarSessoes(); pintarOrigem(); pintarAbas();
+  pintarChat(); pintarMemoria(); pintarStatus();
+  pintarSemana(); pintarKanban(); pintarWiki();
+  pintarVisao();
+}
+
+/* ============ A PONTE: card do Kanban -> sessao de trabalho ============ */
+function irParaSessao(proj, sess){
+  iProjeto = proj; iSessao = sess; iChat = 0; visao = "chat";
+  $("caixa-projetos").classList.remove("aberta");
+  pintarTudo();
+}
+
+function abrirSessaoDoCard(indice){
+  const c = CARDS[indice];
+
+  // ja existe sessao: so navega ate ela
+  if (c.sess !== null && c.sess !== undefined) return irParaSessao(c.proj, c.sess);
+
+  // nao existe: a tarefa vira sessao nova, com o orquestrador do projeto
+  const p = PROJETOS[c.proj];
+  const orq = p.orquestrador;
+  const nova = {
+    nome: slug(c.t),
+    tarefa: c.t,
+    iteracoes: 0,
+    chats: [{nome: orq, papel: "orquestrador"}],
+    memoria: []
+  };
+  p.sessoes.push(nova);
+  c.sess = p.sessoes.length - 1;
+
+  MENSAGENS[nova.nome + "/" + orq] = [
+    {tipo:"sistema", autor:"comando",
+     texto:`Sessão criada a partir do card «${c.t}» · WIKI do ambiente carregada · memória da sessão vazia`},
+    {tipo:"agente", autor: orq,
+     texto:`Peguei a tarefa <code>${c.t}</code>. Já estou com a oferta, o ICP, o tom de voz e o acervo de gravações da WIKI — você não precisa repetir nada disso. Me diz só o que muda nesta.`}
+  ];
+
+  irParaSessao(c.proj, c.sess);
 }
 
 /* ============ CLIQUES ============ */
 
-// WIKI / Kanban: clicar de novo no botao aceso volta pro chat
+// Semana / Kanban / WIKI: clicar de novo no botao aceso volta pro chat
 document.querySelectorAll(".visoes button").forEach(botao => {
   botao.onclick = () => {
     visao = (visao === botao.dataset.visao) ? "chat" : botao.dataset.visao;
@@ -628,19 +1203,14 @@ $("btn-projetos").onclick = () => $("caixa-projetos").classList.toggle("aberta")
 $("lista-projetos").onclick = e => {
   const alvo = e.target.closest("[data-projeto]");
   if (!alvo) return;
-  iProjeto = +alvo.dataset.projeto;
-  iSessao = 0; iChat = 0; visao = "chat";
-  $("caixa-projetos").classList.remove("aberta");
-  pintarTudo();
+  irParaSessao(+alvo.dataset.projeto, 0);
 };
 
 // escolher sessao: troca as abas de chat junto
 $("lista-sessoes").onclick = e => {
   const alvo = e.target.closest("[data-sessao]");
   if (!alvo) return;
-  iSessao = +alvo.dataset.sessao;
-  iChat = 0; visao = "chat";
-  pintarTudo();
+  irParaSessao(iProjeto, +alvo.dataset.sessao);
 };
 
 // escolher aba (= trocar de chat)
@@ -650,6 +1220,36 @@ $("abas").onclick = e => {
   iChat = +alvo.dataset.chat;
   visao = "chat";
   pintarAbas(); pintarChat(); pintarStatus(); pintarVisao();
+};
+
+// clicar num card do Kanban abre (ou cria) a sessao daquela tarefa
+$("visao-kanban").onclick = e => {
+  const alvo = e.target.closest("[data-card]");
+  if (!alvo) return;
+  abrirSessaoDoCard(+alvo.dataset.card);
+};
+
+// a visao Semana mostra os mesmos cards por dia - e tambem leva a sessao
+$("visao-semana").onclick = e => {
+  const card = e.target.closest("[data-card]");
+  if (card) return abrirSessaoDoCard(+card.dataset.card);
+
+  const cont = e.target.closest("[data-continuo]");
+  if (cont) {
+    const [p,s] = cont.dataset.continuo.split("-").map(Number);
+    return irParaSessao(p,s);
+  }
+
+  const ir = e.target.closest("[data-ir]");
+  if (ir) { visao = ir.dataset.ir; pintarVisao(); }
+};
+
+// trocar de pagina da WIKI
+$("visao-wiki").onclick = e => {
+  const alvo = e.target.closest("[data-wiki]");
+  if (!alvo) return;
+  iWiki = +alvo.dataset.wiki;
+  pintarWiki();
 };
 
 // liga/desliga o painel da memoria
