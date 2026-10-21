@@ -42,11 +42,11 @@ class JanelaDeNome(ModalScreen[str | None]):
     def compose(self) -> ComposeResult:
         with Vertical():
             yield Label(self._titulo)
-            yield Input(placeholder="nome", max_length=MAXIMO_NOME, id="nome")
+            yield Input(placeholder="nome", max_length=MAXIMO_NOME, id="nome", compact=True)
             yield Label("", id="aviso")
             with Horizontal():
-                yield Button("Cancelar", id="cancelar")
-                yield Button(self._rotulo_do_botao, variant="primary", id="criar")
+                yield Button("Cancelar", id="cancelar", compact=True)
+                yield Button(self._rotulo_do_botao, variant="primary", id="criar", compact=True)
 
     @on(Button.Pressed, "#criar")
     @on(Input.Submitted, "#nome")
@@ -86,9 +86,9 @@ class JanelaDeAgente(ModalScreen[str | None]):
         with Vertical():
             yield Label("Abrir um chat novo com qual agente?")
             for indice, nome in enumerate(self._nomes):
-                yield Button(nome, classes="agente", id=f"agente-{indice}")
+                yield Button(nome, classes="agente", id=f"agente-{indice}", compact=True)
             with Horizontal():
-                yield Button("Cancelar", id="cancelar")
+                yield Button("Cancelar", id="cancelar", compact=True)
 
     @on(Button.Pressed, ".agente")
     def escolher(self, evento: Button.Pressed) -> None:
@@ -133,8 +133,8 @@ class JanelaDeApagar(ModalScreen[bool]):
         with Vertical():
             yield Label(aviso_de_apagar(self._nome), id="aviso")
             with Horizontal():
-                yield Button("Cancelar", id="cancelar")
-                yield Button("Apagar", variant="error", id="apagar")
+                yield Button("Cancelar", id="cancelar", compact=True)
+                yield Button("Apagar", variant="error", id="apagar", compact=True)
 
     def on_mount(self) -> None:
         self.query_one("#cancelar", Button).focus()

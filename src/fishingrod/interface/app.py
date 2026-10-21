@@ -13,6 +13,26 @@ from fishingrod.interface.tela_de_inicio import TelaDeInicio
 class FishingRodApp(App):
     TITLE = "FishingRod"
 
+    # O jeito dos botoes e campos, num lugar so (card 003): todos compactos,
+    # de uma linha, sem borda e com fundo de cor - menos quadrados na tela.
+    # Cada um e criado com `compact=True`; aqui fica a cor e o respiro.
+    CSS = """
+    Button.-textual-compact {
+        min-width: 0;
+        padding: 0 2;
+        background: $panel;
+        &:hover { background: $panel-lighten-2; }
+        &:focus { text-style: bold; background-tint: $foreground 10%; }
+        &.-active { background: $accent; tint: transparent; }
+        &.-primary { background: $primary; color: $text; }
+        &.-error { background: $error; color: $text; }
+        &.-warning { background: $warning-muted; color: $text-warning; }
+        &.-ligado { background: $accent; color: $text; }
+    }
+    Input.-textual-compact { padding: 0 1; background: $boost; }
+    Select.-textual-compact > SelectCurrent { padding: 0 1; background: $panel; }
+    """
+
     def __init__(
         self, pasta_de_dados: Path | None = None, fabricar_sessoes: FabricaDeSessoes | None = None
     ) -> None:

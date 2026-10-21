@@ -11,11 +11,29 @@ Abrir com `uv run fishingrod`. Veio do [card 001](cards/001-primeira-tela.md).
 - Criar com nome vazio não deixa: a janela avisa "precisa de um nome".
 - Dentro do ambiente: criar frentes e tarefas e vê-las numa árvore.
 - Abrir tarefas em abas; em cada tarefa, escolher uma sessão ou criar uma nova, e ver as abas dos
-  chats da sessão; abrir um chat novo com um agente da lista pelo botão "+ chat"; ver a memória da
-  sessão pelo botão "memória".
-- Ver a wiki do ambiente (o `index` e as páginas) e a lista de agentes.
+  chats da sessão; abrir um chat novo com um agente da lista pelo botão "+ chat".
 - Voltar para a lista de ambientes e entrar em outro.
 - Fechar e abrir de novo: está tudo lá.
+
+### Entender o agente: o painel de explicação
+
+Veio do [card 003](cards/003-interface-em-areas-e-ficha-do-agente.md).
+
+- A lateral mostra só frentes e tarefas, e a área de trabalho só abre tarefas.
+- Em cada tarefa, o botão "explicar" abre e fecha, à direita do chat, o painel de explicação, com
+  três abas:
+  - **ficha:** a ficha do agente do chat que está na frente — nome, papel, modelo, esforço de
+    raciocínio, ferramentas, ferramentas da máquina e instruções —, tirada do que está
+    configurado de verdade. Trocar de chat troca a ficha. Só para ler.
+  - **memória:** o que os agentes da sessão anotaram uns para os outros, atualizado sozinho.
+  - **wiki:** a lista da wiki do ambiente; clicar no `index` ou numa página mostra o conteúdo ali
+    mesmo, com **← voltar** para a lista.
+- Cada tarefa tem o seu painel. Abrir, fechar ou trocar de aba nele não interrompe a resposta de
+  nenhum agente e não tira o cursor do campo de digitação.
+- No pé da lateral, o botão **⚙ ambiente** abre a janela do ambiente: em "início", o nome e as
+  frentes, com quantas tarefas cada uma tem; em "agentes", os agentes do ambiente e a ficha de cada
+  um.
+- Botões e campos compactos, de uma linha, com fundo de cor.
 
 ### Conversar com o agente
 

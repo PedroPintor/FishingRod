@@ -84,9 +84,9 @@ class TelaDeInicio(Screen):
             yield Label(SEM_AMBIENTES, id="vazio")
             yield ListaDeAmbientes(id="ambientes")
             with Horizontal(id="botoes"):
-                yield Button("+ novo ambiente", variant="primary", id="novo")
-                yield Button("entrar", id="entrar")
-                yield Button("apagar", variant="error", id="apagar")
+                yield Button("+ novo ambiente", variant="primary", id="novo", compact=True)
+                yield Button("entrar", id="entrar", compact=True)
+                yield Button("apagar", variant="error", id="apagar", compact=True)
         yield Footer()
 
     async def on_mount(self) -> None:
