@@ -1,6 +1,6 @@
 # Ver a ficha do agente
 
-Estado: em aprofundamento, para virar o card 003
+Estado: virou o [card 003](../cards/003-interface-em-areas-e-ficha-do-agente.md)
 De onde veio: conversa do Pedro com a IA sobre o próximo card, em 2026-10-21. Faz parte de
 [organizar a interface em áreas](organizar-a-interface-em-areas.md).
 

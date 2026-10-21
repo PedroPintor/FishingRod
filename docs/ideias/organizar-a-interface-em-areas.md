@@ -1,6 +1,6 @@
 # Organizar a interface em áreas
 
-Estado: em aprofundamento, para virar o card 003
+Estado: virou o [card 003](../cards/003-interface-em-areas-e-ficha-do-agente.md)
 De onde veio: conversa do Pedro com a IA sobre o próximo card, em 2026-10-21.
 
 A tela de hoje ficou do jeito que saiu na primeira vez: uma lateral com frentes, wiki e agentes

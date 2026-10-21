@@ -1,6 +1,6 @@
 # 003 — Interface em áreas e ficha do agente
 
-Estado: a fazer
+Estado: feito
 Ideias de origem:
 - [organizar a interface em áreas](../ideias/organizar-a-interface-em-areas.md)
 - [ver a ficha do agente](../ideias/ver-a-ficha-do-agente.md)
@@ -102,37 +102,60 @@ ferramentas nem instruções.
 
 As partes são o plano inicial e podem mudar. Quando mudarem, registre aqui o que mudou e por quê.
 
-- [ ] **Nova lateral e área de trabalho:** a lateral fica só com frentes e tarefas; a área de
+- [x] **Nova lateral e área de trabalho:** a lateral fica só com frentes e tarefas; a área de
   trabalho só abre tarefas.
-- [ ] **Painel de explicação:** o botão "explicar" na tarefa, o painel à direita do chat e as três
+- [x] **Painel de explicação:** o botão "explicar" na tarefa, o painel à direita do chat e as três
   abas; a memória muda de lugar para dentro dele.
-- [ ] **Wiki no painel:** a árvore da wiki e a página aberta dentro da aba "wiki".
-- [ ] **Ficha do agente:** a aba "ficha", montada a partir do agente e do catálogo.
+- [x] **Wiki no painel:** a árvore da wiki e a página aberta dentro da aba "wiki".
+- [x] **Ficha do agente:** a aba "ficha", montada a partir do agente e do catálogo.
+
+### O que mudou no caminho
+
+- **A escolha da sessão subiu para a linha das abas dos chats.** Antes ela tinha uma linha só
+  dela; agora a barra de cima da tarefa é `sessão ▾ [+ sessão] [chats…] [+ chat] [explicar]`, como
+  no desenho do card, e o chat e o painel ocupam o resto da altura.
+- **O botão "explicar" e as abas do painel não recebem foco no clique.** É o que deixa o cursor no
+  campo de digitação (a regra "o foco não pula sozinho"). O preço: hoje não se chega a eles com o
+  Tab do teclado. Os atalhos de teclado, no "Pode melhorar", resolvem isso.
+- **O painel só se mostra e se esconde; ele não redesenha a tarefa.** Antes o botão "memória"
+  redesenhava a tarefa inteira, e o campo de digitação perdia o foco e o que já estava escrito
+  nele. Por isso a memória no painel aberto se confere sozinha a cada segundo: os agentes anotam
+  enquanto conversam.
+- **As opções que a ficha mostra são lidas da mesma função que liga o chat.** O
+  `opcoes_do_claude` (em `montagem.py`) chama o `montar_opcoes` do adaptador e lê dele o esforço,
+  as ferramentas da máquina e as instruções. Assim, se as opções mudarem, a ficha muda junto. As
+  instruções vêm do `system_prompt`, que é o texto exato que o Claude recebe.
 
 ## Como testar
 
 O que o Pedro faz na tela e o que tem que acontecer. Ao lado de cada item, o teste automático que
-confere; o nome exato entra quando o teste existir.
+confere, em `tests/interface/test_explicacao.py`.
 
-- [ ] Entro num ambiente → a lateral mostra só frentes e tarefas. *Teste:* a tela do ambiente não
-  tem mais a wiki nem a lista de agentes na lateral.
-- [ ] Abro uma tarefa e aperto "explicar" → o painel abre à direita do chat, na aba "ficha";
-  aperto de novo → fecha. *Teste:* o botão mostra e esconde o painel.
-- [ ] Com o chat do orquestrador na frente, olho a ficha → vejo papel, modelo "opus", esforço
+- [x] Entro num ambiente → a lateral mostra só frentes e tarefas. *Teste:* a tela do ambiente não
+  tem mais a wiki nem a lista de agentes na lateral (`test_a_lateral_mostra_so_frentes_e_tarefas`).
+- [x] Abro uma tarefa e aperto "explicar" → o painel abre à direita do chat, na aba "ficha";
+  aperto de novo → fecha. *Teste:* o botão mostra e esconde o painel
+  (`test_o_botao_explicar_mostra_e_esconde_o_painel`).
+- [x] Com o chat do orquestrador na frente, olho a ficha → vejo papel, modelo "opus", esforço
   "padrão do Claude", as seis ferramentas pelo nome (sem "criar_sessao"), ferramentas da máquina
   "nenhuma" e "Nenhuma instrução escrita.". *Teste:* cada campo da ficha sai do agente, do
-  catálogo e das opções que vão para o Claude.
-- [ ] Troco para o chat do bibliotecário → a ficha troca para a dele. *Teste:* a ficha segue o
-  chat ativo.
-- [ ] Abro a aba "memória" → vejo a memória da sessão, como antes. *Teste:* a aba mostra as
-  anotações da sessão escolhida.
-- [ ] Abro a aba "wiki" e clico no `index` e numa página → o conteúdo aparece no painel, e nenhuma
-  aba nova abre na área de trabalho. *Teste:* abrir uma página da wiki não cria aba de tarefa.
-- [ ] Mando uma mensagem e, enquanto o agente responde, abro e fecho o painel e troco de aba nele
+  catálogo e das opções que vão para o Claude
+  (`test_cada_campo_da_ficha_sai_do_agente_do_catalogo_e_das_opcoes`,
+  `test_a_ficha_le_as_mesmas_opcoes_que_vao_para_o_claude` e
+  `test_a_ficha_muda_quando_a_configuracao_muda`).
+- [x] Troco para o chat do bibliotecário → a ficha troca para a dele. *Teste:* a ficha segue o
+  chat ativo (`test_a_ficha_segue_o_chat_ativo`).
+- [x] Abro a aba "memória" → vejo a memória da sessão, como antes. *Teste:* a aba mostra as
+  anotações da sessão escolhida (`test_a_aba_memoria_mostra_as_anotacoes_da_sessao_escolhida`).
+- [x] Abro a aba "wiki" e clico no `index` e numa página → o conteúdo aparece no painel, e nenhuma
+  aba nova abre na área de trabalho. *Teste:* abrir uma página da wiki não cria aba de tarefa
+  (`test_abrir_uma_pagina_da_wiki_nao_cria_aba_de_tarefa`).
+- [x] Mando uma mensagem e, enquanto o agente responde, abro e fecho o painel e troco de aba nele
   → a resposta continua chegando e o cursor continua no campo de digitação. *Teste:* mexer no
-  painel não interrompe a conversa nem tira o foco do campo.
-- [ ] Com duas tarefas abertas, abro o painel numa → a outra continua como estava. *Teste:* o
-  painel é de cada tarefa.
+  painel não interrompe a conversa nem tira o foco do campo
+  (`test_mexer_no_painel_nao_interrompe_a_conversa_nem_tira_o_foco`).
+- [x] Com duas tarefas abertas, abro o painel numa → a outra continua como estava. *Teste:* o
+  painel é de cada tarefa (`test_o_painel_e_de_cada_tarefa`).
 
 ## Decisões usadas
 
@@ -172,7 +195,7 @@ Quando uma virar trabalho de verdade, ganha um arquivo em `docs/ideias/` e a lin
 
 ## Ao terminar
 
-- [ ] Rodar os testes automáticos (`uv run pytest`).
-- [ ] Acrescentar a funcionalidade em `docs/funcionalidades.md`.
-- [ ] Mudar o estado das ideias de origem para "virou o card 003".
-- [ ] Fazer o commit.
+- [x] Rodar os testes automáticos (`uv run pytest`).
+- [x] Acrescentar a funcionalidade em `docs/funcionalidades.md`.
+- [x] Mudar o estado das ideias de origem para "virou o card 003".
+- [x] Fazer o commit.

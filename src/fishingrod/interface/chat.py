@@ -3,7 +3,7 @@
 A tela so fala com o servico de conversa, nunca com o Claude: e o servico que
 abre a sessao uma vez e a reaproveita. O turno roda numa tarefa do servico; a
 tela ouve as mudancas e redesenha. Por isso redesenhar o painel da tarefa
-(trocar de sessao, abrir a memoria) nao interrompe resposta nenhuma.
+(trocar de sessao, abrir um chat) nao interrompe resposta nenhuma.
 """
 
 from rich.text import Text

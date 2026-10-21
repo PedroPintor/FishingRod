@@ -1,8 +1,9 @@
 """A tela do ambiente: onde a pessoa trabalha.
 
-A esquerda, a arvore de frentes e tarefas, a wiki e os agentes. A direita,
-uma aba para cada tarefa ou pagina da wiki aberta; dentro da aba da tarefa,
-a escolha da sessao e uma aba para cada chat dela (D21).
+A esquerda, so a arvore de frentes e tarefas. A direita, a area de trabalho:
+uma aba para cada tarefa aberta; dentro da aba da tarefa, a escolha da
+sessao, uma aba para cada chat dela (D21) e o painel de explicacao, com a
+ficha do agente, a memoria e a wiki (card 003).
 
 Criar frente, tarefa e sessao passa pelo catalogo, como o usuario (D18): a
 mesma regra que vale para a barra `/` e para o agente vale para o botao.
@@ -21,31 +22,19 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import Screen
-from textual.widgets import (
-    Button,
-    ContentSwitcher,
-    Label,
-    Markdown,
-    Select,
-    Static,
-    Tab,
-    TabbedContent,
-    TabPane,
-    Tabs,
-    Tree,
-)
+from textual.widgets import Button, ContentSwitcher, Label, Select, Tab, TabbedContent, TabPane, Tabs, Tree
 
 from fishingrod.aplicacao.catalogo.tipos import Acionamento, Alvo, Resultado
 from fishingrod.aplicacao.portas.sessao import ContextoDaSessao
-from fishingrod.aplicacao.portas.wiki import ErroDeWiki
 from fishingrod.dominio import Ambiente, Frente, Identidade, Sessao, Tarefa
 from fishingrod.interface.chat import ChatAberto
-from fishingrod.interface.frases import frase_da_falha, frase_das_conexoes, texto_da_memoria
+from fishingrod.interface.explicacao import EstadoDaExplicacao, PainelDeExplicacao
+from fishingrod.interface.frases import frase_da_falha, frase_das_conexoes
 from fishingrod.interface.janelas import JanelaDeAgente, JanelaDeNome
 from fishingrod.interface.montagem import Programa
 
 SEM_FRENTES = "Este ambiente ainda não tem frentes. Comece em [b]+ frente[/b]."
-NADA_ABERTO = "Escolha uma tarefa na árvore, ou uma página da wiki, para abri-la aqui."
+NADA_ABERTO = "Escolha uma tarefa na árvore para abri-la aqui."
 
 
 def _achar(ambiente: Ambiente, id_tarefa: Identidade) -> tuple[Frente, Tarefa] | None:
@@ -68,8 +57,7 @@ def _forma_da_arvore(ambiente: Ambiente) -> tuple:
 
 
 def id_da_aba(prefixo: str, valor: str) -> str:
-    # Id de widget aceita letra, numero, - e _: a barra do caminho da wiki vira --.
-    return f"{prefixo}-{valor.replace('/', '--')}"
+    return f"{prefixo}-{valor}"
 
 
 # --------------------------------------------------------------------------
@@ -78,27 +66,25 @@ def id_da_aba(prefixo: str, valor: str) -> str:
 
 
 class PainelDaTarefa(Vertical):
-    """Uma tarefa aberta numa aba. Em cima, a sessao escolhida, o botao de
-    abrir outra e o de mostrar a memoria; embaixo, uma aba para cada chat da
-    sessao, com o botao de abrir outro chat ao lado delas, e a direita a
-    memoria da sessao, quando esta a mostra (D17, D21).
+    """Uma tarefa aberta numa aba. Na barra de cima, a sessao escolhida e o
+    botao de abrir outra, uma aba para cada chat da sessao, o botao de abrir
+    outro chat e o "explicar"; embaixo, o chat que esta na frente e, a direita
+    dele, o painel de explicacao, quando esta aberto (D17, D21, card 003).
+
+    O painel de explicacao e de cada tarefa: abrir numa nao mexe na outra.
+    Ele so se mostra e se esconde, sem redesenhar a tarefa - assim o campo de
+    digitacao fica onde estava, com o que ja foi escrito nele.
 
     As abas dos chats sao Tabs e ContentSwitcher, e nao um TabbedContent: e o
-    que deixa o botao "+ chat" na mesma linha das abas."""
+    que deixa os botoes na mesma linha das abas."""
 
     DEFAULT_CSS = """
-    PainelDaTarefa .sessoes { height: auto; margin-bottom: 1; }
-    PainelDaTarefa .sessoes Label { padding: 1 1 0 0; }
-    PainelDaTarefa .sessoes Select { width: 30; }
-    PainelDaTarefa .sessoes Button { margin-left: 1; }
-    PainelDaTarefa .barra-de-chats { height: auto; }
-    PainelDaTarefa .barra-de-chats Tabs { width: 1fr; }
-    PainelDaTarefa .barra-de-chats Button { margin-left: 1; }
-    PainelDaTarefa .area-dos-chats { width: 1fr; }
-    PainelDaTarefa #conversas { height: 1fr; }
-    PainelDaTarefa #memoria { width: 40; border-left: solid $panel; padding: 0 1; }
-    PainelDaTarefa #memoria .titulo-da-memoria { text-style: bold; color: $text-muted; }
-    PainelDaTarefa #mostrar-memoria.-ligado { background: $accent; }
+    PainelDaTarefa .barra { height: auto; margin-bottom: 1; }
+    PainelDaTarefa .barra Select { width: 22; }
+    PainelDaTarefa .barra Tabs { width: 1fr; margin-left: 1; }
+    PainelDaTarefa .barra Button { margin-left: 1; }
+    PainelDaTarefa #conversas { width: 1fr; height: 1fr; }
+    PainelDaTarefa #explicar.-ligado { background: $accent; }
     """
 
     def __init__(self, programa: Programa, ambiente: Ambiente, id_tarefa: Identidade) -> None:
@@ -109,8 +95,8 @@ class PainelDaTarefa(Vertical):
         tarefa = self.tarefa
         self.id_sessao = tarefa.sessoes[0].id if tarefa and tarefa.sessoes else None
         self.id_chat: Identidade | None = None  # o chat a mostrar; None e o primeiro
-        # Fica ligado ao trocar de sessao: a memoria que aparece e a da sessao nova.
-        self.mostrar_memoria = False
+        # Fica como esta ao trocar de sessao: o que aparece e o da sessao nova.
+        self.explicacao = EstadoDaExplicacao()
 
     @property
     def tarefa(self) -> Tarefa | None:
@@ -124,59 +110,80 @@ class PainelDaTarefa(Vertical):
         if tarefa is None:
             yield Label("Esta tarefa não existe mais.")
             return
-        with Horizontal(classes="sessoes"):
-            yield Label("Sessão:")
+        sessao = self._sessao(tarefa)
+        ativo = None
+        if sessao is not None and sessao.chats:
+            ativo = (sessao.buscar_chat(self.id_chat) if self.id_chat else None) or sessao.chats[0]
+        with Horizontal(classes="barra"):
             yield Select(
-                [(sessao.nome, sessao.id.valor) for sessao in tarefa.sessoes],
+                [(s.nome, s.id.valor) for s in tarefa.sessoes],
                 value=self.id_sessao.valor if self.id_sessao else Select.NULL,
                 allow_blank=False,
                 id="sessao",
             )
             yield Button("+ sessão", id="nova-sessao")
-            yield Button(
-                "memória",
-                id="mostrar-memoria",
-                classes="-ligado" if self.mostrar_memoria else "",
-                tooltip="Mostra o que os agentes desta sessão anotaram uns para os outros",
+            if ativo is None:
+                return
+            yield Tabs(
+                *(Tab(chat.nome, id=id_da_aba("chat", chat.id.valor)) for chat in sessao.chats),
+                active=id_da_aba("chat", ativo.id.valor),
+                id="abas-de-chat",
             )
-        sessao = self._sessao(tarefa)
-        if sessao is None or not sessao.chats:
-            return
-        ativo = sessao.buscar_chat(self.id_chat) if self.id_chat else None
-        ativo = ativo or sessao.chats[0]
+            yield Button("+ chat", id="novo-chat")
+            explicar = Button(
+                "explicar",
+                id="explicar",
+                classes="-ligado" if self.explicacao.aberto else "",
+                tooltip="Mostra a ficha do agente, a memória da sessão e a wiki, ao lado do chat",
+            )
+            # Clicar nao leva o foco: o cursor continua no campo de digitacao.
+            explicar.can_focus = False
+            yield explicar
         with Horizontal():
-            with Vertical(classes="area-dos-chats"):
-                with Horizontal(classes="barra-de-chats"):
-                    yield Tabs(
-                        *(Tab(chat.nome, id=id_da_aba("chat", chat.id.valor)) for chat in sessao.chats),
-                        active=id_da_aba("chat", ativo.id.valor),
-                        id="abas-de-chat",
+            with ContentSwitcher(initial=id_da_aba("conversa", ativo.id.valor), id="conversas"):
+                id_frente = _achar(self.ambiente, self.id_tarefa)[0].id
+                for chat in sessao.chats:
+                    contexto = ContextoDaSessao(self.ambiente.id, id_frente, self.id_tarefa, sessao.id, chat.id)
+                    yield ChatAberto(
+                        self.programa.conversa, contexto, chat.agente, id=id_da_aba("conversa", chat.id.valor)
                     )
-                    yield Button("+ chat", id="novo-chat")
-                with ContentSwitcher(initial=id_da_aba("conversa", ativo.id.valor), id="conversas"):
-                    id_frente = _achar(self.ambiente, self.id_tarefa)[0].id
-                    for chat in sessao.chats:
-                        contexto = ContextoDaSessao(self.ambiente.id, id_frente, self.id_tarefa, sessao.id, chat.id)
-                        yield ChatAberto(
-                            self.programa.conversa, contexto, chat.agente, id=id_da_aba("conversa", chat.id.valor)
-                        )
-            if self.mostrar_memoria:
-                with VerticalScroll(id="memoria"):
-                    yield Label(f"MEMÓRIA DA {sessao.nome.upper()}", classes="titulo-da-memoria", markup=False)
-                    yield Markdown(texto_da_memoria(sessao.memoria))
+            yield PainelDeExplicacao(
+                self.programa, self.ambiente, self.explicacao, ativo.agente, sessao, id="explicacao"
+            )
 
-    @on(Button.Pressed, "#mostrar-memoria")
-    async def alternar_memoria(self) -> None:
-        # Redesenhar, e nao so esconder: a memoria pode ter mudado desde a
-        # ultima vez que apareceu.
-        self.mostrar_memoria = not self.mostrar_memoria
-        await self.recompose()
+    @on(Button.Pressed, "#explicar")
+    async def alternar_explicacao(self, evento: Button.Pressed) -> None:
+        self.explicacao.aberto = not self.explicacao.aberto
+        evento.button.set_class(self.explicacao.aberto, "-ligado")
+        painel = self.query_one("#explicacao", PainelDeExplicacao)
+        painel.display = self.explicacao.aberto
+        if self.explicacao.aberto:
+            # A memoria pode ter mudado desde a ultima vez que apareceu.
+            await self.atualizar()
+
+    async def atualizar(self) -> None:
+        """A memoria no painel, se ele esta aberto: os agentes anotam enquanto
+        conversam. A tela chama de tempos em tempos."""
+        tarefa = self.tarefa
+        paineis = self.query(PainelDeExplicacao)
+        if not self.explicacao.aberto or tarefa is None or not paineis:
+            return
+        sessao = self._sessao(tarefa)
+        if sessao is not None:
+            await paineis.first().mostrar_memoria(sessao)
 
     @on(Tabs.TabActivated, "#abas-de-chat")
     def trocar_de_chat(self, evento: Tabs.TabActivated) -> None:
         valor = evento.tab.id.removeprefix("chat-")
         self.id_chat = Identidade(valor)
         self.query_one("#conversas", ContentSwitcher).current = id_da_aba("conversa", valor)
+        # A ficha segue o chat que esta na frente.
+        conversa = self.query_one(f"#{id_da_aba('conversa', valor)}", ChatAberto)
+        painel = self.query_one("#explicacao", PainelDeExplicacao)
+        if painel.is_mounted:
+            painel.mostrar_ficha(conversa.agente)
+        else:
+            painel.agente = conversa.agente
 
     @on(Button.Pressed, "#novo-chat")
     def pedir_agente(self) -> None:
@@ -236,7 +243,6 @@ class TelaDoAmbiente(Screen):
     TelaDoAmbiente #lateral { width: 36; border-right: solid $panel; padding: 0 1; }
     TelaDoAmbiente .titulo-lateral { color: $text-muted; text-style: bold; margin-top: 1; }
     TelaDoAmbiente #arvore { height: auto; max-height: 20; }
-    TelaDoAmbiente #wiki { height: auto; max-height: 10; }
     TelaDoAmbiente #sem-frentes { width: 100%; color: $text-muted; }
     TelaDoAmbiente #botoes-da-arvore { height: auto; }
     TelaDoAmbiente #botoes-da-arvore Button { margin-right: 1; }
@@ -270,22 +276,16 @@ class TelaDoAmbiente(Screen):
                 with Horizontal(id="botoes-da-arvore"):
                     yield Button("+ frente", id="nova-frente")
                     yield Button("+ tarefa", id="nova-tarefa")
-                yield Label("WIKI", classes="titulo-lateral")
-                wiki: Tree = Tree("wiki", id="wiki")
-                wiki.show_root = False
-                yield wiki
-                yield Label("AGENTES", classes="titulo-lateral")
-                yield Static(self._agentes(), id="agentes", markup=False)
             with Vertical(id="trabalho"):
                 yield Label(NADA_ABERTO, id="nada-aberto")
                 yield TabbedContent(id="abertas")
 
     async def on_mount(self) -> None:
         self.desenhar_arvore()
-        await self.desenhar_wiki()
         self._mostrar_abertas()
         self.atualizar()
         self.set_interval(0.5, self.atualizar)
+        self.set_interval(1, self.atualizar_explicacoes)
 
     def atualizar(self) -> None:
         """O mostrador, e a arvore se o agente mexeu nela."""
@@ -294,12 +294,11 @@ class TelaDoAmbiente(Screen):
             no = self.query_one("#arvore", Tree).cursor_node
             self.desenhar_arvore(selecionar=no.data[-1] if no is not None and no.data else None)
 
-    def _agentes(self) -> str:
-        linhas = []
-        for agente in self.programa.agentes:
-            papel = "abre cada sessão" if agente.e_orquestrador else "pode ser chamado num chat"
-            linhas.append(f"• {agente.nome} — {papel}")
-        return "\n".join(linhas)
+    async def atualizar_explicacoes(self) -> None:
+        """A memoria nos paineis de explicacao abertos: os agentes anotam
+        enquanto conversam."""
+        for painel in self.query(PainelDaTarefa):
+            await painel.atualizar()
 
     # --- a arvore de frentes e tarefas ---------------------------------------
 
@@ -374,42 +373,6 @@ class TelaDoAmbiente(Screen):
                 await self.abrir_tarefa(resultado.dado.id)
 
         self.app.push_screen(JanelaDeNome(f"Nome da nova tarefa em {frente.nome}"), depois)
-
-    # --- a wiki --------------------------------------------------------------
-
-    async def desenhar_wiki(self) -> None:
-        wiki = self.query_one("#wiki", Tree)
-        wiki.clear()
-        localizador = self.ambiente.raiz_wiki.localizador
-        wiki.root.add_leaf("index", data=("index",))
-        try:
-            entidades = await self.programa.wiki.listar(localizador, "")
-            for entidade in entidades:
-                no = wiki.root.add(entidade, expand=False)
-                for pagina in await self.programa.wiki.listar(localizador, entidade):
-                    no.add_leaf(pagina, data=("pagina", f"{entidade}/{pagina}"))
-        except ErroDeWiki:
-            self.notify("Não consegui ler a wiki deste ambiente.", severity="error")
-
-    @on(Tree.NodeSelected, "#wiki")
-    async def abrir_da_wiki(self, evento: Tree.NodeSelected) -> None:
-        dado = evento.node.data
-        if not dado:
-            return
-        localizador = self.ambiente.raiz_wiki.localizador
-        try:
-            if dado[0] == "index":
-                titulo, texto = "wiki: index", await self.programa.wiki.ler_index(localizador)
-                id_aba = id_da_aba("wiki", "index")
-            else:
-                pagina = await self.programa.wiki.ler(localizador, dado[1])
-                titulo = f"wiki: {pagina.titulo or dado[1]}"
-                texto = f"# {pagina.titulo or dado[1]}\n\n{pagina.conteudo}"
-                id_aba = id_da_aba("wiki", dado[1])
-        except ErroDeWiki:
-            self.notify("Não consegui ler esta página da wiki.", severity="error")
-            return
-        await self._abrir_aba(id_aba, titulo, lambda: VerticalScroll(Markdown(texto)))
 
     # --- as abas -------------------------------------------------------------
 

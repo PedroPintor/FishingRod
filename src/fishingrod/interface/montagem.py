@@ -12,6 +12,7 @@ from typing import Protocol
 from fishingrod.adaptadores.persistencia import RepositorioSQLite, abrir_repositorio
 from fishingrod.adaptadores.persistencia.localizacao import NOME_DO_BANCO, pasta_de_dados
 from fishingrod.adaptadores.sessao import AdaptadorSessaoClaude
+from fishingrod.adaptadores.sessao.opcoes import montar_opcoes
 from fishingrod.adaptadores.wiki import WikiDeArquivos
 from fishingrod.aplicacao.catalogo.catalogo import CatalogoDeAcoes
 from fishingrod.aplicacao.catalogo.registro import ACOES
@@ -23,6 +24,7 @@ from fishingrod.aplicacao.portas.wiki import PortaWiki
 from fishingrod.aplicacao.servicos.servico_de_ambiente import ServicoDeAmbiente
 from fishingrod.aplicacao.servicos.servico_de_conversa import ServicoDeConversa
 from fishingrod.dominio import Agente, Chamador, Identidade, Papel
+from fishingrod.interface.ficha import Ficha, OpcoesDoClaude, montar_ficha
 
 # Os agentes desta iteracao (D20). O modelo e o apelido que o CLI do Claude
 # entende, e nao uma versao exata: a versao muda, o apelido nao. As
@@ -41,6 +43,29 @@ BIBLIOTECARIO = Agente(nome="bibliotecario", papel=Papel.SUB_AGENTE, modelo="son
 # (D22). Os agentes nao tem as ferramentas da maquina (D16): nada aqui e lido
 # nem escrito por eles.
 PASTA_DO_CLAUDE = "claude"
+
+
+def opcoes_do_claude(agente: Agente) -> OpcoesDoClaude:
+    """O que a ficha mostra das opcoes do agente, lido das opcoes montadas pela
+    mesma funcao que o adaptador usa ao ligar o chat (card 003): se elas
+    mudarem, a ficha muda junto. O que e de cada conversa (o CLI, a pasta, os
+    servidores, o codigo da conversa) nao entra na ficha, e vai vazio."""
+    opcoes = montar_opcoes(
+        agente=agente,
+        cli=Path(),
+        pasta_de_trabalho=Path(),
+        servidores={},
+        permitidos=(),
+        conversa="",
+        retomar=False,
+    )
+    # Sem lista, o Claude liga as ferramentas dele: a ficha diz isso, e nao "nenhuma".
+    if isinstance(opcoes.tools, list):
+        ferramentas = tuple(opcoes.tools)
+    else:
+        ferramentas = (str(opcoes.tools) if opcoes.tools else "todas as do Claude Code",)
+    instrucoes = opcoes.system_prompt if isinstance(opcoes.system_prompt, str) else "as do Claude Code"
+    return OpcoesDoClaude(opcoes.effort, ferramentas, instrucoes)
 
 
 class ConfirmacaoRecusada:
@@ -76,6 +101,10 @@ class Programa:
     conversa: ServicoDeConversa
     sessoes: Sessoes
     fechado: bool = field(default=False, init=False)
+
+    def ficha(self, agente: Agente) -> Ficha:
+        # Os agentes do programa sao a lista fixa do software (D20).
+        return montar_ficha(agente, self.catalogo, opcoes_do_claude(agente), agente in self.agentes)
 
     async def fechar(self) -> None:
         """Desliga todos os chats e so depois fecha o banco: as respostas

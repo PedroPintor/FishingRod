@@ -7,10 +7,9 @@ tela - e, quando importa, o que ficou no disco, abrindo o programa de novo.
 
 import asyncio
 
-from textual.widgets import ContentSwitcher, Input, Label, ListView, Markdown, Select, TabbedContent, Tabs, Tree
+from textual.widgets import ContentSwitcher, Input, Label, ListView, Select, TabbedContent, Tabs, Tree
 
 from fishingrod.interface.app import FishingRodApp
-from fishingrod.interface.frases import MEMORIA_VAZIA
 from fishingrod.interface.janelas import AVISO_SEM_NOME, JanelaDeAgente, JanelaDeApagar, JanelaDeNome
 from fishingrod.interface.tela_de_inicio import ItemDeAmbiente, TelaDeInicio
 from fishingrod.interface.tela_do_ambiente import PainelDaTarefa, TelaDoAmbiente
@@ -245,59 +244,6 @@ def test_cancelar_a_escolha_do_agente_nao_abre_chat(tmp_path):
     assert rodar(tmp_path, roteiro) == ["orquestrador"]
 
 
-def memoria_na_tela(painel: PainelDaTarefa) -> str | None:
-    """O markdown do quadro de memoria, ou None se ele nao esta aparecendo."""
-    quadros = painel.query("#memoria")
-    return quadros.first().query_one(Markdown).source if quadros else None
-
-
-def test_o_botao_memoria_mostra_e_esconde_a_memoria_da_sessao(tmp_path):
-    async def roteiro(app, pilot):
-        await criar_ambiente(app, pilot, "Nexo")
-        await entrar(app, pilot, "Nexo")
-        await criar_frente(app, pilot, "Mídia")
-        await criar_tarefa(app, pilot, "Campanha LP")
-        antes = memoria_na_tela(painel_aberto(app))
-        await pilot.click("#mostrar-memoria")
-        await esperar(app, pilot)
-        aberta = memoria_na_tela(painel_aberto(app))
-        await pilot.click("#mostrar-memoria")
-        await esperar(app, pilot)
-        return antes, aberta, memoria_na_tela(painel_aberto(app))
-
-    antes, aberta, depois = rodar(tmp_path, roteiro)
-
-    assert antes is None
-    assert aberta == MEMORIA_VAZIA
-    assert depois is None
-
-
-def test_a_memoria_que_aparece_e_a_da_sessao_escolhida(tmp_path):
-    async def roteiro(app, pilot):
-        await criar_ambiente(app, pilot, "Nexo")
-        await entrar(app, pilot, "Nexo")
-        await criar_frente(app, pilot, "Mídia")
-        await criar_tarefa(app, pilot, "Campanha LP")
-        painel = painel_aberto(app)
-        primeira = painel.tarefa.sessoes[0]
-        # Ninguem anota pela tela ainda: quem anotaria e o agente, no chat.
-        await app.programa.servico.anotar_memoria(
-            app.screen.ambiente.id, primeira.id, "icp", "dentistas", "orquestrador"
-        )
-        await pilot.click("#mostrar-memoria")
-        await esperar(app, pilot)
-        da_primeira = memoria_na_tela(painel_aberto(app))
-        await pilot.click("#nova-sessao")
-        await esperar(app, pilot)
-        da_segunda = memoria_na_tela(painel_aberto(app))
-        return da_primeira, da_segunda
-
-    da_primeira, da_segunda = rodar(tmp_path, roteiro)
-
-    assert "### icp" in da_primeira and "dentistas" in da_primeira and "orquestrador" in da_primeira
-    assert da_segunda == MEMORIA_VAZIA  # sessao nova, memoria limpa (D21)
-
-
 def test_abro_duas_tarefas_e_passo_de_uma_para_a_outra(tmp_path):
     async def roteiro(app, pilot):
         await criar_ambiente(app, pilot, "Nexo")
@@ -314,32 +260,6 @@ def test_abro_duas_tarefas_e_passo_de_uma_para_a_outra(tmp_path):
 
     assert abas == 2  # abrir de novo nao duplica a aba
     assert ativa == "Campanha LP"
-
-
-def test_clico_no_index_da_wiki_e_vejo_o_conteudo(tmp_path):
-    async def roteiro(app, pilot):
-        await criar_ambiente(app, pilot, "Nexo Aquisição")
-        await entrar(app, pilot, "Nexo Aquisição")
-        await selecionar_no(app, pilot, "#wiki", "index")
-        abertas = app.screen.query_one("#abertas", TabbedContent)
-        markdown = abertas.get_pane(abertas.active).query_one(Markdown)
-        return abertas.active, markdown.source
-
-    aba, texto = rodar(tmp_path, roteiro)
-
-    assert aba == "wiki-index"
-    assert "Nexo Aquisição" in texto
-
-
-def test_os_agentes_aparecem_na_lateral(tmp_path):
-    async def roteiro(app, pilot):
-        await criar_ambiente(app, pilot, "Nexo")
-        await entrar(app, pilot, "Nexo")
-        return str(app.screen.query_one("#agentes").render())
-
-    texto = rodar(tmp_path, roteiro)
-
-    assert "orquestrador" in texto and "bibliotecario" in texto
 
 
 def test_volto_para_a_lista_e_entro_em_outro_ambiente(tmp_path):
