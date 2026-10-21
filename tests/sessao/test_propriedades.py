@@ -286,7 +286,8 @@ class Motorista:
         if self.modelo.sessoes[indice].estado is Estado.FECHADA:
             return
         liberar = asyncio.Event()
-        if self._sem_conexao(indice):
+        sem_conexao = self._sem_conexao(indice)
+        if sem_conexao:
             self.fabrica.subidas.append(Trava(liberar))
             pronto = lambda n=self.fabrica.nascidos: self.fabrica.nascidos > n  # noqa: E731
         else:
@@ -298,7 +299,7 @@ class Motorista:
         await esperar_que(pronto)
         turno.cancel()
         await asyncio.gather(turno, return_exceptions=True)
-        self.modelo.esc_antes_da_entrega(indice)
+        self.modelo.esc_antes_da_entrega(indice, chegou_ao_cli=not sem_conexao)
 
     async def esc_depois(self, indice: int, aviso_funciona: bool, e_mandar_de_novo: bool = False) -> None:
         if self.modelo.sessoes[indice].estado is Estado.FECHADA:
@@ -384,6 +385,9 @@ class FabricaPorSessao:
     def __call__(self, opcoes: ClaudeAgentOptions):
         return self.por_prompt[opcoes.system_prompt](opcoes)
 
+    def guardada(self, conversa: str, pasta: object = None) -> bool:
+        return any(fabrica.guardada(conversa) for fabrica in self.por_prompt.values())
+
 
 def _turnos(roteiros_) -> list[RoteiroDoTurno]:
     return [RoteiroDoTurno(list(r.passos)) for r in roteiros_]
@@ -410,12 +414,14 @@ async def _sozinha(roteiros_, mensagens: int) -> list:
 @given(_ROTEIROS, _ROTEIROS, st.lists(st.booleans(), min_size=1, max_size=60), st.integers(0, 6))
 def test_pbt_u6_10_sessoes_isoladas(perturbacao, de_a, de_b, ordem, quando):
     async def cenario():
+        fabrica = FabricaPorSessao(FabricaRoteirizada(turnos=_turnos(de_a)), FabricaRoteirizada(turnos=_turnos(de_b)))
         sessoes = AdaptadorSessaoClaude(
             registro_de_teste(),
             Path.cwd(),
-            FabricaPorSessao(FabricaRoteirizada(turnos=_turnos(de_a)), FabricaRoteirizada(turnos=_turnos(de_b))),
+            fabrica,
             prazo_de_subida=1,
             prazo_de_interrupcao=0.3,
+            procurar_conversa=fabrica.guardada,
         )
         a = await sessoes.abrir(agente(ferramentas=("ler",), regras=("A",)), contexto_novo())
         b = await sessoes.abrir(agente(ferramentas=("ler",), regras=("B",)), contexto_novo())
@@ -523,7 +529,9 @@ def test_pbt_u6_11_interromper_cancela_tudo(tmp_path, esperas, quando, ambiente)
         frente, tarefa = tarefas_de(ambiente)[0]
         contexto = ContextoDaSessao(ambiente.id, frente.id, tarefa.id, tarefa.sessoes[0].id, tarefa.sessoes[0].chats[0].id)
         registro = RegistroDeFerramentas(entradas_de_acoes(montagem.catalogo))
-        sessoes = AdaptadorSessaoClaude(registro, Path.cwd(), fabrica, prazo_de_subida=5, prazo_de_interrupcao=1)
+        sessoes = AdaptadorSessaoClaude(
+            registro, Path.cwd(), fabrica, prazo_de_subida=5, prazo_de_interrupcao=1, procurar_conversa=fabrica.guardada
+        )
         quem = ORQUESTRADOR.__class__(ORQUESTRADOR.nome, ORQUESTRADOR.papel, "m", ferramentas=tuple(e.nome for e in registro.entradas))
         sessao = await sessoes.abrir(quem, contexto)
         leitor = asyncio.create_task(coletar(sessoes.enviar(sessao, "crie as etapas")))

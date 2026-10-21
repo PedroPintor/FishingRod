@@ -23,6 +23,7 @@ from claude_agent_sdk import (
     PermissionResultAllow,
     PermissionResultDeny,
     ToolPermissionContext,
+    get_session_info,
 )
 from claude_agent_sdk.types import CanUseTool
 
@@ -123,6 +124,18 @@ VARIAVEIS_DE_CREDENCIAL: tuple[str, ...] = _CREDENCIAIS + _OUTRAS_FONTES + _ENDE
 
 
 # --------------------------------------------------------------------------
+# A conversa guardada pelo Claude (D22)
+# --------------------------------------------------------------------------
+
+
+def conversa_guardada(conversa: str, pasta_de_trabalho: Path) -> bool:
+    """O Claude ainda guarda esta conversa? Ele a procura pela pasta de
+    trabalho, entao a pergunta tambem. Sem ela (apagada, outro computador,
+    parada ha mais de 30 dias), o chat recomeca do zero."""
+    return get_session_info(conversa, directory=str(pasta_de_trabalho)) is not None
+
+
+# --------------------------------------------------------------------------
 # A espera da sua confirmacao (DP-S-16)
 # --------------------------------------------------------------------------
 
@@ -174,15 +187,18 @@ def montar_opcoes(
     pasta_de_trabalho: Path,
     servidores: Mapping[str, McpSdkServerConfig],
     permitidos: Collection[str],
+    conversa: str,
+    retomar: bool,
 ) -> ClaudeAgentOptions:
-    """Linha por linha, o §5 de nfr-design-patterns.md. A unica diferenca e
-    `model`, que vem do Agente (R-CG6-3): o campo existe no dominio e e o lugar
-    de escolher o modelo de cada agente.
+    """Linha por linha, o §5 de nfr-design-patterns.md. As diferencas: `model`,
+    que vem do Agente (R-CG6-3), e a conversa (D22): o codigo dela e o id do
+    chat, e `retomar` diz se o Claude ja a guarda (`resume`) ou se ela nasce
+    agora com esse codigo (`session_id`).
 
-    Ficam no valor padrao, de proposito: resume, continue_conversation,
-    fork_session, add_dirs, plugins, max_turns (sem limite de passos,
-    D-Q12-1), hooks, agents, session_store, permission_mode,
-    permission_prompt_tool_name e user.
+    Ficam no valor padrao, de proposito: continue_conversation,
+    fork_session (retomar continua na mesma conversa), add_dirs, plugins,
+    max_turns (sem limite de passos, D-Q12-1), hooks, agents, session_store,
+    permission_mode, permission_prompt_tool_name e user.
     """
     env = {nome: "" for nome in VARIAVEIS_DE_CREDENCIAL}
     env["MCP_TOOL_TIMEOUT"] = str(TEMPO_LIMITE_DE_FERRAMENTA_MS)
@@ -205,7 +221,9 @@ def montar_opcoes(
         cwd=pasta_de_trabalho,
         include_partial_messages=True,
         env=env,
-        # Nenhuma copia da conversa em ~/.claude/projects/ (DP-S-13, medicao 15).
-        extra_args={"no-session-persistence": None},
+        # O Claude guarda a conversa em ~/.claude/projects/ e a retoma pelo
+        # codigo (D22, que derruba DP-S-13; medicao 15 invertida).
+        resume=conversa if retomar else None,
+        session_id=None if retomar else conversa,
         stderr=_saida_de_erro,
     )

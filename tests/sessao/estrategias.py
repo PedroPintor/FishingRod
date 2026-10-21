@@ -143,6 +143,7 @@ def adaptador(
         fabrica,
         prazo_de_subida=prazo_de_subida,
         prazo_de_interrupcao=prazo_de_interrupcao,
+        procurar_conversa=fabrica.guardada,
     )
 
 

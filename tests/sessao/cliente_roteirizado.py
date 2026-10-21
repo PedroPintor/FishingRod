@@ -13,7 +13,11 @@ Duas coisas ele faz como o CLI de verdade:
 - conta PROCESSOS VIVOS: um processo nasce no comeco de `connect` e morre em
   `disconnect`, ou quando `connect` falha ou e cancelado - o SDK desconecta
   sozinho nesses casos. E o que deixa conferir RN-S-38 e N5 sem processo de
-  verdade.
+  verdade;
+- guarda as CONVERSAS (D22): a conversa passa a existir na primeira `query`,
+  e `connect` recusa, como o CLI medido, `resume` de conversa que nao existe
+  e `session_id` de conversa que ja existe. `guardada` e a costura
+  `procurar_conversa` do adaptador.
 
 A fabrica guarda as opcoes que recebeu (para `test_opcoes.py`).
 """
@@ -29,6 +33,7 @@ import mcp.types
 from claude_agent_sdk import (
     AssistantMessage,
     ClaudeAgentOptions,
+    ProcessError,
     RateLimitEvent,
     RateLimitInfo,
     ResultMessage,
@@ -285,6 +290,11 @@ class ClienteRoteirizado:
     async def connect(self, prompt: object = None) -> None:
         self._nascer()
         try:
+            conversas = self._fabrica.conversas
+            if (self.opcoes.resume and self.opcoes.resume not in conversas) or (
+                self.opcoes.session_id and self.opcoes.session_id in conversas
+            ):
+                raise ProcessError("o CLI recusou a conversa", exit_code=1)
             await _comportar(self._subida)
         except BaseException:
             # Como o SDK: connect que falha (ou e cancelado) desconecta.
@@ -297,6 +307,7 @@ class ClienteRoteirizado:
             raise RuntimeError("query sem processo")
         self._turno = self._fabrica.proximo_turno()
         self.consultas.append(prompt)
+        self._fabrica.conversas.add(self.opcoes.resume or self.opcoes.session_id)
         await _comportar(self._turno.entrega)
         self._passos = deque(self._turno.passos)
 
@@ -421,12 +432,16 @@ class FabricaRoteirizada:
         self.clientes: list[ClienteRoteirizado] = []
         self.vivos = 0
         self.nascidos = 0
+        self.conversas: set[str] = set()
 
     def __call__(self, opcoes: ClaudeAgentOptions) -> ClienteRoteirizado:
         self.opcoes.append(opcoes)
         cliente = ClienteRoteirizado(self, opcoes, self.subidas.popleft() if self.subidas else Bem())
         self.clientes.append(cliente)
         return cliente
+
+    def guardada(self, conversa: str, pasta: object = None) -> bool:
+        return conversa in self.conversas
 
     def proximo_turno(self) -> RoteiroDoTurno:
         return self.turnos.popleft() if self.turnos else turno_de_texto("resposta padrao")

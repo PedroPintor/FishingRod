@@ -70,8 +70,8 @@ def cliente_real(opcoes: ClaudeAgentOptions) -> ClienteDoSdk:
 
 @dataclass(frozen=True)
 class Entregue:
-    """`query()` voltou: a mensagem chegou ao provedor. `primeira` e o
-    `conversa_nova` - a primeira entrega desta conexao."""
+    """`query()` voltou: a mensagem chegou ao provedor. `primeira` diz se e a
+    primeira entrega desta conexao; o adaptador decide o `conversa_nova`."""
 
     primeira: bool
 

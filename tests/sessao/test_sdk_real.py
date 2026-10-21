@@ -679,29 +679,31 @@ def test_medicao_14_queda_dura_do_python(tmp_path):
 
 
 # --------------------------------------------------------------------------
-# 15: nenhuma copia da conversa em ~/.claude/projects/
+# 15: a conversa e guardada em ~/.claude/projects/, com o id do chat (D22)
 # --------------------------------------------------------------------------
+# Invertida pelo card 002: antes conferia que NADA era guardado (DP-S-13).
 
 
-def test_medicao_15_nenhuma_copia_da_conversa(tmp_path):
+def test_medicao_15_a_conversa_e_guardada_com_o_id_do_chat(tmp_path):
     marca = f"fishingrod-medicao-15-{uuid.uuid4().hex[:8]}"
     pasta = _pasta(tmp_path, marca)
     projetos = Path.home() / ".claude" / "projects"
+    contexto = contexto_novo()
 
     async def cenario():
         sessoes = AdaptadorSessaoClaude(RegistroDeFerramentas([]), pasta)
-        sessao = await sessoes.abrir(_agente(), contexto_novo())
+        sessao = await sessoes.abrir(_agente(), contexto)
         eventos, _ = await _turno(sessoes, sessao, "Responda apenas: ok.")
         await sessoes.encerrar()
         return eventos
 
     eventos = rodar(cenario())
     marca_saneada = re.sub(r"[^A-Za-z0-9]", "-", marca)
-    copias = [str(p) for p in projetos.rglob("*") if marca_saneada in str(p) or marca in str(p)] if projetos.exists() else []
+    copias = [str(p) for p in projetos.rglob("*.jsonl") if marca_saneada in str(p) or marca in str(p)] if projetos.exists() else []
     medir(15, final=_resumo(eventos)[-1], copias=copias, pasta_de_projetos=str(projetos))
 
     assert eventos[-1] == FimDeTurno()
-    assert copias == [], "risco aceito: a conversa foi copiada para ~/.claude/projects/"
+    assert [Path(c).name for c in copias] == [f"{contexto.id_chat.valor}.jsonl"]
 
 
 # --------------------------------------------------------------------------

@@ -17,7 +17,11 @@ Para U7 e U8:
   chega ao catalogo de U5 -, e a resposta fica em `respostas`;
 - um passo `Esperar` para o turno ate o teste liberar: e o que deixa testar
   ESC e fechar no meio;
-- `mensagens` guarda o que chegou ao agente (so o que teve MensagemEntregue).
+- `mensagens` guarda o que chegou ao agente (so o que teve MensagemEntregue);
+- `conversas` sao os chats de que o agente lembra (D22): abrir de novo uma
+  sessao do mesmo chat retoma a conversa, e tirar o chat daqui e o "provedor
+  perdeu a conversa";
+- `roteiro_do_chat` da a um chat os proprios turnos, antes do `roteiro`.
 """
 
 import asyncio
@@ -108,6 +112,8 @@ class SessaoFalsa:
         self._registro = registro
         self.roteiro: list[TurnoRoteirizado] = list(roteiro)
         self.mensagens: list[tuple[SessaoViva, str]] = []
+        self.conversas: set[Identidade] = set()
+        self.roteiro_do_chat: dict[Identidade, list[TurnoRoteirizado]] = {}
         self.respostas: list[tuple[str, RespostaDaFerramenta]] = []
         self._sessoes: dict[Identidade, _SessaoFalsa] = {}
         self._encerrado = False
@@ -139,9 +145,11 @@ class SessaoFalsa:
             return
 
         sessao.lendo = True
-        conversa_nova = sessao.estado is EstadoFalso.SEM_CONEXAO
+        id_chat = sessao_viva.contexto.id_chat
+        conversa_nova = id_chat not in self.conversas
         sessao.estado = EstadoFalso.EM_TURNO
-        turno = self.roteiro.pop(0) if self.roteiro else _PADRAO
+        do_chat = self.roteiro_do_chat.get(id_chat)
+        turno = do_chat.pop(0) if do_chat else self.roteiro.pop(0) if self.roteiro else _PADRAO
         entregue = False
         terminou = False
         try:
@@ -154,6 +162,7 @@ class SessaoFalsa:
                 return
 
             self.mensagens.append((sessao_viva, mensagem))
+            self.conversas.add(id_chat)
             entregue = True
             yield MensagemEntregue(conversa_nova=conversa_nova)
             houve_resposta = False
@@ -209,6 +218,9 @@ class SessaoFalsa:
         self._encerrado = True
         for sessao in list(self._sessoes.values()):
             await self.fechar(sessao.viva)
+
+    def ligada(self, sessao_viva: SessaoViva) -> bool:
+        return self.estado(sessao_viva) in (EstadoFalso.OCIOSA, EstadoFalso.EM_TURNO)
 
     def estado(self, sessao_viva: SessaoViva) -> EstadoFalso:
         sessao = self._sessoes.get(getattr(sessao_viva, "id", None))

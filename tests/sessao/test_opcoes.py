@@ -43,9 +43,13 @@ ESCRITAS = {
     "cwd",
     "include_partial_messages",
     "env",
-    "extra_args",
+    "resume",
+    "session_id",
     "stderr",
 }
+
+
+CONTEXTO = contexto_novo()
 
 
 def _opcoes_de(quem, pasta: Path | None = None) -> ClaudeAgentOptions:
@@ -53,7 +57,7 @@ def _opcoes_de(quem, pasta: Path | None = None) -> ClaudeAgentOptions:
 
     async def cenario():
         sessoes = adaptador(fabrica, pasta=pasta)
-        sessao = await sessoes.abrir(quem, contexto_novo())
+        sessao = await sessoes.abrir(quem, CONTEXTO)
         await coletar(sessoes.enviar(sessao, "oi"))
         await sessoes.encerrar()
 
@@ -158,8 +162,13 @@ def test_rn_s_52_a_lista_de_credenciais():
     assert not {"HTTPS_PROXY", "HTTP_PROXY", "NODE_EXTRA_CA_CERTS", "CLAUDE_CONFIG_DIR"} & set(VARIAVEIS_DE_CREDENCIAL)
 
 
-def test_dp_s_13_nenhuma_copia_da_conversa(opcoes):
-    assert opcoes.extra_args == {"no-session-persistence": None}
+def test_d22_a_conversa_nasce_com_o_id_do_chat_e_e_guardada(opcoes):
+    """D22 derruba DP-S-13: a conversa fica em ~/.claude/projects/, com o id
+    do chat como codigo. Numa conversa que ainda nao existe, `session_id`;
+    numa que existe, `resume` (test_adaptador.py)."""
+    assert opcoes.session_id == CONTEXTO.id_chat.valor
+    assert opcoes.resume is None
+    assert opcoes.extra_args == {}
 
 
 def test_dp_s_17_a_saida_de_erro_do_cli_vai_ao_log_em_debug(opcoes, caplog):
@@ -170,7 +179,7 @@ def test_dp_s_17_a_saida_de_erro_do_cli_vai_ao_log_em_debug(opcoes, caplog):
 
 
 def test_dp_s_11_todas_as_outras_opcoes_ficam_no_valor_padrao(opcoes):
-    """Inclusive as ausentes: resume, continue_conversation, fork_session,
+    """Inclusive as ausentes: continue_conversation, fork_session,
     add_dirs, plugins, max_turns (sem limite de passos), hooks, agents,
     session_store, permission_mode, permission_prompt_tool_name e user."""
     padrao = ClaudeAgentOptions()
@@ -179,7 +188,6 @@ def test_dp_s_11_todas_as_outras_opcoes_ficam_no_valor_padrao(opcoes):
             continue
         assert getattr(opcoes, campo.name) == getattr(padrao, campo.name), campo.name
     for ausente in (
-        "resume",
         "continue_conversation",
         "fork_session",
         "add_dirs",
@@ -214,10 +222,12 @@ def test_o_comando_do_cli_que_o_sdk_monta():
     assert "--setting-sources=" in comando
     assert "--strict-mcp-config" in comando
     assert "--include-partial-messages" in comando
-    assert "--no-session-persistence" in comando
+    assert "--no-session-persistence" not in comando
+    assert any(parte.startswith("--session-id=") for parte in comando)
     assert "--allowedTools" not in comando
     assert "--max-turns" not in comando
     assert not any(parte.startswith("--resume") for parte in comando)
+    assert "--fork-session" not in comando
 
 
 # --------------------------------------------------------------------------

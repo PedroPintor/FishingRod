@@ -9,7 +9,11 @@ mesma regra que vale para a barra `/` e para o agente vale para o botao.
 
 A tela guarda ids, e nao as frentes e tarefas: numa recarga por conflito, o
 servico troca os objetos de dentro do ambiente (RN-A-03). O Ambiente em si e
-sempre o mesmo objeto, e e nele que a tela procura.
+sempre o mesmo objeto, e e nele que a tela procura - e e por ele que a arvore
+se redesenha quando o orquestrador cria uma frente ou uma tarefa.
+
+No topo, o mostrador das conexoes com o Claude (card 002). Sair do ambiente
+desliga os chats dele.
 """
 
 from textual import on
@@ -32,23 +36,35 @@ from textual.widgets import (
 )
 
 from fishingrod.aplicacao.catalogo.tipos import Acionamento, Alvo, Resultado
+from fishingrod.aplicacao.portas.sessao import ContextoDaSessao
 from fishingrod.aplicacao.portas.wiki import ErroDeWiki
-from fishingrod.dominio import Ambiente, Chat, Identidade, Sessao, Tarefa
-from fishingrod.interface.frases import frase_da_falha, texto_da_memoria
+from fishingrod.dominio import Ambiente, Frente, Identidade, Sessao, Tarefa
+from fishingrod.interface.chat import ChatAberto
+from fishingrod.interface.frases import frase_da_falha, frase_das_conexoes, texto_da_memoria
 from fishingrod.interface.janelas import JanelaDeAgente, JanelaDeNome
 from fishingrod.interface.montagem import Programa
 
 SEM_FRENTES = "Este ambiente ainda não tem frentes. Comece em [b]+ frente[/b]."
 NADA_ABERTO = "Escolha uma tarefa na árvore, ou uma página da wiki, para abri-la aqui."
-CHAT_SEM_CONVERSA = "A conversa com a IA ainda não está ligada nesta tela: ela chega no próximo card."
 
 
-def _achar_tarefa(ambiente: Ambiente, id_tarefa: Identidade) -> Tarefa | None:
+def _achar(ambiente: Ambiente, id_tarefa: Identidade) -> tuple[Frente, Tarefa] | None:
     for frente in ambiente.frentes:
         tarefa = frente.buscar_tarefa(id_tarefa)
         if tarefa is not None:
-            return tarefa
+            return frente, tarefa
     return None
+
+
+def _achar_tarefa(ambiente: Ambiente, id_tarefa: Identidade) -> Tarefa | None:
+    achado = _achar(ambiente, id_tarefa)
+    return achado[1] if achado else None
+
+
+def _forma_da_arvore(ambiente: Ambiente) -> tuple:
+    """O que a arvore mostra: muda quando alguem (a tela ou o agente) cria,
+    renomeia ou tira uma frente ou tarefa."""
+    return tuple((f.id, f.nome, tuple((t.id, t.nome) for t in f.tarefas)) for f in ambiente.frentes)
 
 
 def id_da_aba(prefixo: str, valor: str) -> str:
@@ -78,8 +94,8 @@ class PainelDaTarefa(Vertical):
     PainelDaTarefa .barra-de-chats { height: auto; }
     PainelDaTarefa .barra-de-chats Tabs { width: 1fr; }
     PainelDaTarefa .barra-de-chats Button { margin-left: 1; }
-    PainelDaTarefa .chat { padding: 1; }
     PainelDaTarefa .area-dos-chats { width: 1fr; }
+    PainelDaTarefa #conversas { height: 1fr; }
     PainelDaTarefa #memoria { width: 40; border-left: solid $panel; padding: 0 1; }
     PainelDaTarefa #memoria .titulo-da-memoria { text-style: bold; color: $text-muted; }
     PainelDaTarefa #mostrar-memoria.-ligado { background: $accent; }
@@ -138,12 +154,11 @@ class PainelDaTarefa(Vertical):
                     )
                     yield Button("+ chat", id="novo-chat")
                 with ContentSwitcher(initial=id_da_aba("conversa", ativo.id.valor), id="conversas"):
+                    id_frente = _achar(self.ambiente, self.id_tarefa)[0].id
                     for chat in sessao.chats:
-                        yield Static(
-                            _texto_do_chat(chat),
-                            classes="chat",
-                            markup=False,
-                            id=id_da_aba("conversa", chat.id.valor),
+                        contexto = ContextoDaSessao(self.ambiente.id, id_frente, self.id_tarefa, sessao.id, chat.id)
+                        yield ChatAberto(
+                            self.programa.conversa, contexto, chat.agente, id=id_da_aba("conversa", chat.id.valor)
                         )
             if self.mostrar_memoria:
                 with VerticalScroll(id="memoria"):
@@ -208,10 +223,6 @@ class PainelDaTarefa(Vertical):
         self.notify(f"{resultado.dado.nome} criada.", markup=False)
 
 
-def _texto_do_chat(chat: Chat) -> str:
-    return f"Chat com o agente {chat.agente.nome}.\n\n{CHAT_SEM_CONVERSA}"
-
-
 # --------------------------------------------------------------------------
 # A tela
 # --------------------------------------------------------------------------
@@ -221,6 +232,7 @@ class TelaDoAmbiente(Screen):
     DEFAULT_CSS = """
     TelaDoAmbiente #topo { height: 3; padding: 0 1; border-bottom: solid $panel; }
     TelaDoAmbiente #nome-do-ambiente { width: 1fr; padding-top: 1; text-style: bold; }
+    TelaDoAmbiente #conexoes { padding: 1 2 0 0; color: $text-muted; }
     TelaDoAmbiente #lateral { width: 36; border-right: solid $panel; padding: 0 1; }
     TelaDoAmbiente .titulo-lateral { color: $text-muted; text-style: bold; margin-top: 1; }
     TelaDoAmbiente #arvore { height: auto; max-height: 20; }
@@ -246,6 +258,7 @@ class TelaDoAmbiente(Screen):
     def compose(self) -> ComposeResult:
         with Horizontal(id="topo"):
             yield Label(self.ambiente.nome, id="nome-do-ambiente", markup=False)
+            yield Label(frase_das_conexoes(0), id="conexoes")
             yield Button("← ambientes", id="voltar")
         with Horizontal():
             with VerticalScroll(id="lateral"):
@@ -271,6 +284,15 @@ class TelaDoAmbiente(Screen):
         self.desenhar_arvore()
         await self.desenhar_wiki()
         self._mostrar_abertas()
+        self.atualizar()
+        self.set_interval(0.5, self.atualizar)
+
+    def atualizar(self) -> None:
+        """O mostrador, e a arvore se o agente mexeu nela."""
+        self.query_one("#conexoes", Label).update(frase_das_conexoes(self.programa.conversa.conexoes_abertas()))
+        if _forma_da_arvore(self.ambiente) != self._forma_desenhada:
+            no = self.query_one("#arvore", Tree).cursor_node
+            self.desenhar_arvore(selecionar=no.data[-1] if no is not None and no.data else None)
 
     def _agentes(self) -> str:
         linhas = []
@@ -282,6 +304,7 @@ class TelaDoAmbiente(Screen):
     # --- a arvore de frentes e tarefas ---------------------------------------
 
     def desenhar_arvore(self, selecionar: Identidade | None = None) -> None:
+        self._forma_desenhada = _forma_da_arvore(self.ambiente)
         arvore = self.query_one("#arvore", Tree)
         arvore.clear()
         no_escolhido = None
@@ -417,5 +440,11 @@ class TelaDoAmbiente(Screen):
     # --- voltar ------------------------------------------------------------
 
     @on(Button.Pressed, "#voltar")
-    def action_voltar(self) -> None:
-        self.app.pop_screen()
+    async def action_voltar(self) -> None:
+        # Sair do ambiente desliga os chats dele; uma resposta em andamento e
+        # interrompida, como no Esc (card 002).
+        if self.programa.conversa.conexoes_abertas():
+            self.notify("Desligando os chats deste ambiente…")
+        await self.programa.conversa.desligar_ambiente(self.ambiente.id)
+        if self.app.screen is self:
+            self.app.pop_screen()

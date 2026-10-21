@@ -2,7 +2,9 @@
 
 Escrito a partir da tabela do FD §5 e do §6, com as emendas N2 e N3 - e nao a
 partir do adaptador. Para cada sessao: o estado, se ha processo vivo e o
-`conversa_nova` da proxima entrega. Cada comando devolve o evento final que o
+`conversa_nova` da proxima entrega - que so e True enquanto o CLI nunca
+recebeu uma mensagem do chat: depois disso, a conversa esta guardada e toda
+conexao a retoma (D22). Cada comando devolve o evento final que o
 adaptador deve emitir (None quando quem le foi cancelado: nao ha evento final).
 """
 
@@ -64,11 +66,15 @@ class ModeloDeSessoes:
         sessao.estado = Estado.OCIOSA
         return nova, None
 
-    def esc_antes_da_entrega(self, indice: int) -> None:
-        """RN-S-36, N3: o processo e descartado, e a mensagem nunca existiu."""
+    def esc_antes_da_entrega(self, indice: int, chegou_ao_cli: bool) -> None:
+        """RN-S-36, N3: o processo e descartado, e para quem le a mensagem
+        nunca existiu. Se o processo ja estava de pe, o CLI a recebeu e a
+        guardou na conversa (D22)."""
         sessao = self.sessoes[indice]
         if sessao.estado is not Estado.FECHADA:
             self._derrubar(sessao)
+            if chegou_ao_cli:
+                sessao.proxima_nova = False
 
     def esc_depois_da_entrega(self, indice: int, aviso_funciona: bool) -> bool:
         """RN-S-35: a mensagem foi entregue. Com o aviso ao provedor bem, a
@@ -101,4 +107,3 @@ class ModeloDeSessoes:
     def _derrubar(sessao: SessaoModelada) -> None:
         sessao.estado = Estado.SEM_CONEXAO
         sessao.processo = False
-        sessao.proxima_nova = True

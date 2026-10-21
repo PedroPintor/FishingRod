@@ -11,18 +11,38 @@ Abrir com `uv run fishingrod`. Veio do [card 001](cards/001-primeira-tela.md).
 - Criar com nome vazio não deixa: a janela avisa "precisa de um nome".
 - Dentro do ambiente: criar frentes e tarefas e vê-las numa árvore.
 - Abrir tarefas em abas; em cada tarefa, escolher uma sessão ou criar uma nova, e ver as abas dos
-  chats da sessão; abrir um chat novo com um agente da lista pelo botão "+ chat" (ainda sem
-  conversa com a IA); ver a memória da sessão pelo botão "memória".
+  chats da sessão; abrir um chat novo com um agente da lista pelo botão "+ chat"; ver a memória da
+  sessão pelo botão "memória".
 - Ver a wiki do ambiente (o `index` e as páginas) e a lista de agentes.
 - Voltar para a lista de ambientes e entrar em outro.
 - Fechar e abrir de novo: está tudo lá.
+
+### Conversar com o agente
+
+Veio do [card 002](cards/002-conversar-com-o-agente.md).
+
+- Conversar no chat com o agente pela assinatura do Claude, sem chave de API, vendo a resposta
+  chegar aos pedaços enquanto é escrita.
+- Cada chat usa um só processo do Claude: ele liga na primeira mensagem e continua de pé entre
+  uma mensagem e outra. Chats diferentes conversam ao mesmo tempo, sem travar a tela.
+- Ver no topo do ambiente quantas conexões com o Claude estão abertas, e na faixa de cada chat se
+  ele está pronto, ligado ou respondendo.
+- Mandar mensagem enquanto o agente responde: ela espera numa fila e sai sozinha depois.
+- Apertar Esc para interromper a resposta: o que já apareceu fica, marcado "(interrompida)", e as
+  mensagens da fila voltam para o campo de digitação.
+- Desligar um chat pelo botão "desligar"; sair do ambiente desliga os chats dele, e fechar o
+  programa desliga todos. Nenhum processo do Claude fica para trás.
+- Fechar e abrir de novo: a conversa continua na tela, e o agente lembra dela (pela memória do
+  próprio Claude). Se o Claude não tiver mais a conversa, o chat avisa e recomeça do zero.
+- Uma falha do Claude (fora do ar, limite da assinatura, sem login) aparece como aviso só naquele
+  chat; o resto do programa continua.
+- O orquestrador pode pedir ações (criar frente, tarefa…), mas, enquanto confirmar na tela não
+  existe, toda ação que pede confirmação é recusada, e o chat avisa.
 
 ## Pronto no código, ainda sem tela
 
 Funciona e tem testes automáticos, mas ainda não há como usar abrindo o programa.
 
-- Conversar com o Claude usando a assinatura, sem chave de API, e com a resposta chegando aos
-  pedaços enquanto é escrita. (`src/fishingrod/adaptadores/sessao/`)
 - Criar um ambiente, que já nasce com a sua wiki. (`ServicoDeAmbiente.criar_ambiente`)
 - Ver a lista dos ambientes, do mais recentemente mexido para o mais antigo.
   (`ServicoDeAmbiente.listar_ambientes`)

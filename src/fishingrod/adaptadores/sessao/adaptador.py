@@ -11,7 +11,7 @@ transicao fora dela e defeito e vai ao log em ERROR.
 
 import asyncio
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -29,7 +29,7 @@ from fishingrod.adaptadores.sessao.conexao import (
 )
 from fishingrod.adaptadores.sessao.falhas import Aviso, Causa, CliAusente, Classificacao, Fase, classificar
 from fishingrod.adaptadores.sessao.ferramentas import Execucoes, nomes_qualificados, servidores
-from fishingrod.adaptadores.sessao.opcoes import localizar_cli, montar_opcoes
+from fishingrod.adaptadores.sessao.opcoes import conversa_guardada, localizar_cli, montar_opcoes
 from fishingrod.adaptadores.sessao.traducao import Tradutor
 from fishingrod.aplicacao.ferramentas import Ferramenta, RegistroDeFerramentas
 from fishingrod.aplicacao.portas.sessao import (
@@ -83,6 +83,8 @@ class _Sessao:
     # descarte), a sessao continua EM_TURNO, e o proximo leitor espera aqui.
     espera: asyncio.Event | None = None
     fila: asyncio.Queue[ItemDoTurno] | None = None
+    # A conexao atual retomou uma conversa que o Claude ja guardava (D22).
+    retomou: bool = False
 
     @property
     def pares(self) -> frozenset[tuple[Familia, str]]:
@@ -105,9 +107,13 @@ class AdaptadorSessaoClaude:
     """A PortaSessao, mais `encerrar()` (G7).
 
     `fabrica_de_cliente` e a costura de teste (G11): o padrao e o cliente real;
-    os testes entregam um cliente roteirizado. Os prazos sao os unicos do
+    os testes entregam um cliente roteirizado; `procurar_conversa` e a
+    costura do que o Claude guarda em disco (D22). Os prazos sao os unicos do
     adaptador (DP-S-08): 60 s para subir o CLI (NFR-S-11) e 5 s para a cauda de
     uma interrupcao.
+
+    A conversa de cada sessao e a do chat: o codigo dela no Claude e o id do
+    chat. Cada conexao retoma essa conversa, se o Claude ainda a guarda.
     """
 
     def __init__(
@@ -117,12 +123,14 @@ class AdaptadorSessaoClaude:
         fabrica_de_cliente: FabricaDeCliente = cliente_real,
         prazo_de_subida: float = 60,
         prazo_de_interrupcao: float = 5,
+        procurar_conversa: Callable[[str, Path], bool] = conversa_guardada,
     ) -> None:
         self._registro = registro
         self._pasta_de_trabalho = Path(pasta_de_trabalho)
         self._fabrica_de_cliente = fabrica_de_cliente
         self._prazo_de_subida = prazo_de_subida
         self._prazo_de_interrupcao = prazo_de_interrupcao
+        self._procurar_conversa = procurar_conversa
         self._sessoes: dict[Identidade, _Sessao] = {}
         self._encerrado = False
 
@@ -199,7 +207,9 @@ class AdaptadorSessaoClaude:
                     match item:
                         case Entregue(primeira=primeira):
                             leitura.entregue = True  # imediatamente antes do yield (N3)
-                            yield MensagemEntregue(conversa_nova=primeira)
+                            # Conversa nova: a primeira entrega de uma conexao que
+                            # nao retomou nada - o agente nao lembra de antes.
+                            yield MensagemEntregue(conversa_nova=primeira and not sessao.retomou)
                         case DoProvedor(mensagem=do_provedor):
                             traducao = tradutor.traduzir(do_provedor)
                             self._registrar_avisos(sessao, traducao.avisos)
@@ -269,12 +279,16 @@ class AdaptadorSessaoClaude:
         return evento
 
     def _conectar(self, sessao: _Sessao, cli: Path) -> None:
+        conversa = sessao.viva.contexto.id_chat.valor
+        sessao.retomou = self._procurar_conversa(conversa, self._pasta_de_trabalho)
         opcoes = montar_opcoes(
             agente=sessao.agente,
             cli=cli,
             pasta_de_trabalho=self._pasta_de_trabalho,
             servidores=servidores(sessao.ferramentas, sessao.execucoes),
             permitidos=nomes_qualificados(sessao.ferramentas),
+            conversa=conversa,
+            retomar=sessao.retomou,
         )
         cliente = self._fabrica_de_cliente(opcoes)
         conexao: Conexao | None = None
@@ -293,7 +307,11 @@ class AdaptadorSessaoClaude:
             ao_terminar=terminou,
         )
         sessao.conexao = conexao
-        _log.info("sessao [%s] conectando ao provedor", sessao.viva.id)
+        _log.info(
+            "sessao [%s] conectando ao provedor (%s)",
+            sessao.viva.id,
+            "retomando a conversa" if sessao.retomou else "conversa nova",
+        )
 
     async def _derrubar(self, sessao: _Sessao, leitura: _Leitura) -> None:
         if not leitura.assumiu:
@@ -410,6 +428,12 @@ class AdaptadorSessaoClaude:
             )
             return
         sessao.estado = novo
+
+    def ligada(self, sessao_viva: SessaoViva) -> bool:
+        """O processo existe enquanto a dona da conexao vive: da subida ao fim
+        do fechamento."""
+        sessao = self._sessoes.get(getattr(sessao_viva, "id", None))
+        return sessao is not None and sessao.conexao is not None
 
     def estado(self, sessao_viva: SessaoViva) -> Estado:
         """Para os testes e para o log de U9: o estado de uma sessao. Uma

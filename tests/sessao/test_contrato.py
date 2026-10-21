@@ -202,3 +202,40 @@ def test_os_tres_implementam_a_porta():
     assert inspect.iscoroutinefunction(AdaptadorSessaoClaude.abrir)
     assert inspect.isasyncgenfunction(AdaptadorSessaoClaude.enviar)
     assert inspect.isasyncgenfunction(SessaoFalsa.enviar)
+    assert callable(SessaoFalsa.ligada) and callable(AdaptadorSessaoClaude.ligada)
+
+
+def test_ligada_so_enquanto_ha_processo(implementacao):
+    """Card 002: o mostrador conta as sessoes ligadas. Abrir nao liga; o
+    primeiro envio liga; fechar desliga."""
+    fabricar, quem = implementacao
+
+    async def cenario():
+        porta = fabricar()
+        sessao = await porta.abrir(quem, contexto_novo())
+        aberta = porta.ligada(sessao)
+        await coletar(porta.enviar(sessao, PEDIDO))
+        depois_do_turno = porta.ligada(sessao)
+        await porta.fechar(sessao)
+        fechada = porta.ligada(sessao)
+        await _encerrar(porta)
+        return aberta, depois_do_turno, fechada
+
+    assert executar(cenario()) == (False, True, False)
+
+
+def test_d22_abrir_de_novo_o_mesmo_chat_retoma_a_conversa(implementacao):
+    fabricar, quem = implementacao
+
+    async def cenario():
+        porta = fabricar()
+        contexto = contexto_novo()
+        primeira = await porta.abrir(quem, contexto)
+        um = await coletar(porta.enviar(primeira, PEDIDO))
+        await porta.fechar(primeira)
+        segunda = await porta.abrir(quem, contexto)
+        dois = await coletar(porta.enviar(segunda, PEDIDO))
+        await _encerrar(porta)
+        return um[0], dois[0]
+
+    assert executar(cenario()) == (MensagemEntregue(conversa_nova=True), MensagemEntregue(conversa_nova=False))

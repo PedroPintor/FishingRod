@@ -276,21 +276,74 @@ def test_dp_s_10_a_rede_defeito_no_adaptador_vira_falha_inesperada(monkeypatch, 
 # --------------------------------------------------------------------------
 
 
-def test_rn_s_34_reconexao_com_conversa_nova():
+def test_rn_s_34_reconexao_retoma_a_conversa():
+    """D22: a conexao nova retoma a conversa do chat - o agente lembra."""
     fabrica = FabricaRoteirizada(
         turnos=[turno_de_texto("um"), RoteiroDoTurno([Levantar(CLIConnectionError("caiu"))]), turno_de_texto("tres")]
     )
 
     async def cenario():
         sessoes, sessao = await _abrir(fabrica)
-        return [await coletar(sessoes.enviar(sessao, t)) for t in ("um", "dois", "tres")]
+        return sessao, [await coletar(sessoes.enviar(sessao, t)) for t in ("um", "dois", "tres")]
 
-    um, dois, tres = executar(cenario())
+    sessao, (um, dois, tres) = executar(cenario())
+    chat = sessao.contexto.id_chat.valor
 
     assert um[0] == MensagemEntregue(True)
     assert dois == [MensagemEntregue(False), FalhaDoTurno(M.INDISPONIVEL)]
-    assert tres[0] == MensagemEntregue(True)  # o agente nao lembra
+    assert tres[0] == MensagemEntregue(False)  # o agente lembra
     assert len(fabrica.clientes) == 2
+    assert [(o.session_id, o.resume) for o in fabrica.opcoes] == [(chat, None), (None, chat)]
+
+
+# --------------------------------------------------------------------------
+# A conversa do chat (D22)
+# --------------------------------------------------------------------------
+
+
+def test_d22_abrir_de_novo_o_mesmo_chat_retoma_a_conversa():
+    fabrica = FabricaRoteirizada()
+
+    async def cenario():
+        sessoes = adaptador(fabrica)
+        contexto = contexto_novo()
+        primeira = await sessoes.abrir(agente(), contexto)
+        um = await coletar(sessoes.enviar(primeira, "um"))
+        await sessoes.fechar(primeira)
+        segunda = await sessoes.abrir(agente(), contexto)
+        dois = await coletar(sessoes.enviar(segunda, "dois"))
+        await sessoes.encerrar()
+        return um, dois
+
+    um, dois = executar(cenario())
+
+    assert um[0] == MensagemEntregue(True)
+    assert dois[0] == MensagemEntregue(False)
+    assert fabrica.opcoes[1].resume == fabrica.opcoes[0].session_id
+
+
+def test_d22_conversa_que_o_claude_nao_guarda_mais_recomeca_do_zero():
+    """A conversa sumiu (pasta apagada, outro computador): o chat recomeca,
+    com o mesmo codigo, e a entrega diz que a conversa e nova."""
+    fabrica = FabricaRoteirizada()
+
+    async def cenario():
+        sessoes = adaptador(fabrica)
+        contexto = contexto_novo()
+        primeira = await sessoes.abrir(agente(), contexto)
+        await coletar(sessoes.enviar(primeira, "um"))
+        await sessoes.fechar(primeira)
+        fabrica.conversas.clear()
+        segunda = await sessoes.abrir(agente(), contexto)
+        dois = await coletar(sessoes.enviar(segunda, "dois"))
+        await sessoes.encerrar()
+        return contexto, dois
+
+    contexto, dois = executar(cenario())
+
+    assert dois[0] == MensagemEntregue(True)
+    assert dois[-1] == FimDeTurno()
+    assert (fabrica.opcoes[1].session_id, fabrica.opcoes[1].resume) == (contexto.id_chat.valor, None)
 
 
 # --------------------------------------------------------------------------
@@ -357,7 +410,8 @@ def test_rn_s_35_aviso_que_falha_descarta_o_processo():
 
 def test_n3_esc_no_instante_da_entrega_descarta_mesmo_com_a_escrita_feita():
     """O CLI ja recebeu a mensagem, mas quem le ainda nao viu MensagemEntregue:
-    o processo e descartado, e a transcricao continua honesta (C2=A)."""
+    o processo e descartado, e a transcricao continua honesta (C2=A). O CLI
+    ja tinha guardado a mensagem na conversa, e a conexao nova a retoma (D22)."""
     liberar = asyncio.Event()
     fabrica = FabricaRoteirizada(turnos=[RoteiroDoTurno([Parar()], entrega=Trava(liberar)), turno_de_texto("dois")])
 
@@ -383,7 +437,7 @@ def test_n3_esc_no_instante_da_entrega_descarta_mesmo_com_a_escrita_feita():
     assert vistos == []
     assert fabrica.clientes[0].consultas == ["um"]
     assert fabrica.clientes[0].interrupcoes == 0
-    assert proximo[0] == MensagemEntregue(True)
+    assert proximo[0] == MensagemEntregue(False)
 
 
 def test_g6_abandonar_o_iterador_e_interromper():

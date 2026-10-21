@@ -80,8 +80,9 @@ class Familia(Enum):
 class MensagemEntregue:
     """A mensagem chegou ao agente: daqui em diante ele lembra dela (C2=A).
 
-    `conversa_nova` e True na primeira entrega de cada conexao - a primeira do
-    chat neste processo, ou a primeira depois de uma reconexao (G2, RN-S-41).
+    `conversa_nova` e True quando o agente nao lembra de nada antes desta
+    mensagem: o chat e novo, ou a conversa dele nao pode ser retomada (D22).
+    Quem ja tinha conversa nesse chat avisa a pessoa.
     """
 
     conversa_nova: bool
@@ -230,7 +231,14 @@ class RegistroInvalido(ErroDeSessao):
 
 
 class PortaSessao(Protocol):
-    """O ciclo de vida de uma conversa com o provedor."""
+    """O ciclo de vida de uma conversa com o provedor.
+
+    A conversa e a do chat (D22): abrir de novo uma sessao para o mesmo chat
+    - depois de fechar, ou numa nova abertura do programa - retoma de onde
+    parou, se o provedor ainda lembra. O chat e a chave: o adaptador guarda
+    o que precisar debaixo do id dele. Um chat tem no maximo uma sessao
+    aberta por vez.
+    """
 
     async def abrir(self, agente: Agente, contexto: ContextoDaSessao) -> SessaoViva:
         """So prepara: verifica e fabrica as ferramentas, e NAO sobe processo
@@ -253,4 +261,11 @@ class PortaSessao(Protocol):
         """Encerra a sessao de vez (RN-S-37). Um turno em andamento termina em
         FalhaDoTurno(SESSAO_FECHADA). Volta so com o processo morto (DP-S-06).
         Nunca levanta; fechar de novo nao faz nada."""
+        ...
+
+    def ligada(self, sessao: SessaoViva) -> bool:
+        """Ha um processo do provedor de pe (ou subindo) para esta sessao?
+        E o que o mostrador de conexoes conta (card 002): uma sessao aberta
+        cujo processo caiu numa falha nao esta ligada - liga de novo na
+        proxima mensagem."""
         ...
