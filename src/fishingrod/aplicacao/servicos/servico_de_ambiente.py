@@ -10,8 +10,8 @@ apaga a pasta da wiki e a porta (PortaWiki.apagar), nao este arquivo.
 
 A leitura tem uma ordem: os erros, a conversao do esquema (pura), a busca de
 alvo por identidade e, por fim, a classe. Dentro dela, os auxiliares vem antes
-das dez operacoes, porque e neles que moram as regras de falha e de conflito -
-num lugar so, em vez de repetidas dez vezes (business-logic-model.md 1).
+das onze operacoes, porque e neles que moram as regras de falha e de conflito -
+num lugar so, em vez de repetidas onze vezes (business-logic-model.md 1).
 """
 
 import asyncio
@@ -43,6 +43,7 @@ from fishingrod.dominio import (
     ExecutorEtapa,
     Frente,
     Identidade,
+    Sessao,
     Tarefa,
 )
 
@@ -81,6 +82,10 @@ class FrenteInexistente(ErroDeServicoDeAmbiente):
 
 class TarefaInexistente(ErroDeServicoDeAmbiente):
     """RN-A-08: id_tarefa nao existe neste ambiente."""
+
+
+class SessaoInexistente(ErroDeServicoDeAmbiente):
+    """RN-A-08: id_sessao nao existe neste ambiente."""
 
 
 class EtapaInexistente(ErroDeServicoDeAmbiente):
@@ -145,6 +150,15 @@ def _achar_tarefa(ambiente: Ambiente, id_tarefa: Identidade) -> Tarefa:
     raise TarefaInexistente(f"nao existe a tarefa [{id_tarefa}] neste ambiente")
 
 
+def _achar_sessao(ambiente: Ambiente, id_sessao: Identidade) -> Sessao:
+    for frente in ambiente.frentes:
+        for tarefa in frente.tarefas:
+            sessao = tarefa.buscar_sessao(id_sessao)
+            if sessao is not None:
+                return sessao
+    raise SessaoInexistente(f"nao existe a sessao [{id_sessao}] neste ambiente")
+
+
 def _achar_etapa(ambiente: Ambiente, id_etapa: Identidade) -> Etapa:
     for frente in ambiente.frentes:
         for tarefa in frente.tarefas:
@@ -166,7 +180,7 @@ def _localizador(ambiente: Ambiente) -> str:
 
 
 class ServicoDeAmbiente:
-    """Dez operacoes sobre ambientes, para a tela e para os agentes (C1=A).
+    """Onze operacoes sobre ambientes, para a tela e para os agentes (C1=A).
 
     Guarda dois estados, e so (domain-entities.md 1.2):
     - os ambientes ABERTOS, um objeto por id no processo (Q1=A). A tela e os
@@ -202,7 +216,7 @@ class ServicoDeAmbiente:
             )
         for agente in agentes_de_chat:
             if agente.e_orquestrador:
-                # G3: toda tarefa ja nasce com o seu orquestrador (RN-A-21).
+                # G3: toda sessao ja nasce com o seu orquestrador (RN-A-21).
                 # Fora da lista, pedir um segundo cai em AgenteDesconhecido, sem
                 # depender de o dominio pegar o caso depois.
                 raise AgenteInvalido(
@@ -411,8 +425,9 @@ class ServicoDeAmbiente:
         return await self._mutar(id_ambiente, lambda ambiente: ambiente.criar_frente(nome))
 
     async def criar_tarefa(self, id_ambiente: Identidade, id_frente: Identidade, nome: str) -> Tarefa:
-        """US-16. A tarefa nasce com um chat do orquestrador do construtor: quem
-        chama nao escolhe nem conhece o agente (RN-A-21)."""
+        """US-16. A tarefa nasce com a primeira sessao, e nela o chat do
+        orquestrador do construtor: quem chama nao escolhe nem conhece o agente
+        (RN-A-21, D21)."""
         return await self._mutar(
             id_ambiente,
             lambda ambiente: _achar_frente(ambiente, id_frente).criar_tarefa(
@@ -420,8 +435,20 @@ class ServicoDeAmbiente:
             ),
         )
 
+    async def criar_sessao(
+        self, id_ambiente: Identidade, id_tarefa: Identidade, nome: str = ""
+    ) -> Sessao:
+        """D21. A sessao nasce com o chat do orquestrador, como a primeira.
+        `nome` vazio vira "sessão N" (Tarefa, de U1)."""
+        return await self._mutar(
+            id_ambiente,
+            lambda ambiente: _achar_tarefa(ambiente, id_tarefa).criar_sessao(
+                self._orquestrador, nome
+            ),
+        )
+
     async def criar_chat(
-        self, id_ambiente: Identidade, id_tarefa: Identidade, nome_agente: str, nome: str = ""
+        self, id_ambiente: Identidade, id_sessao: Identidade, nome_agente: str, nome: str = ""
     ) -> Chat:
         """Q14=X: e assim que o orquestrador delega ao bibliotecario. So abre chat
         com agente da lista fechada, achado pelo nome (RN-A-22) - quem chama, a
@@ -434,7 +461,7 @@ class ServicoDeAmbiente:
             # Resolvido dentro da intencao: nome desconhecido falha antes de
             # qualquer escrita, como os outros erros de validacao.
             agente = self._resolver_agente(nome_agente)
-            return _achar_tarefa(ambiente, id_tarefa).criar_chat(agente, nome)
+            return _achar_sessao(ambiente, id_sessao).criar_chat(agente, nome)
 
         return await self._mutar(id_ambiente, intencao)
 
@@ -474,12 +501,12 @@ class ServicoDeAmbiente:
     async def anotar_memoria(
         self,
         id_ambiente: Identidade,
-        id_tarefa: Identidade,
+        id_sessao: Identidade,
         chave: str,
         valor: str,
         autor: str,
     ) -> Anotacao:
-        """US-04. Nao passa por _mutar porque nao grava o documento (RN-A-25):
+        """US-04. A memoria e da sessao (D21). Nao passa por _mutar porque nao grava o documento (RN-A-25):
         o dominio cria a Anotacao e o servico a entrega a porta de anotar.
         Nunca chama salvar_ambiente, nunca levanta ConflitoDeVersao e nao muda
         Ambiente.versao.
@@ -489,9 +516,9 @@ class ServicoDeAmbiente:
         """
         async with self._trava(id_ambiente):
             ambiente = await self._abrir(id_ambiente)
-            tarefa = _achar_tarefa(ambiente, id_tarefa)
-            anotacao = tarefa.memoria.anotar(chave, valor, autor)  # valida chave e autor
+            sessao = _achar_sessao(ambiente, id_sessao)
+            anotacao = sessao.memoria.anotar(chave, valor, autor)  # valida chave e autor
             await self._gravar(
-                ambiente, self._persistencia.anotar(id_ambiente, id_tarefa, chave, anotacao)
+                ambiente, self._persistencia.anotar(id_ambiente, id_sessao, chave, anotacao)
             )
             return anotacao

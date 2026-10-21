@@ -65,8 +65,9 @@ def test_nfr_p_20_apagar_nao_deixa_linha_em_tabela_nenhuma(tmp_path):
 
         async def cenario():
             await repositorio.salvar_ambiente(ambiente)
-            anotacao = tarefa.memoria.anotar("achado", "algo", "agente")
-            await repositorio.anotar(ambiente.id, tarefa.id, "achado", anotacao)
+            sessao = tarefa.sessoes[0]
+            anotacao = sessao.memoria.anotar("achado", "algo", "agente")
+            await repositorio.anotar(ambiente.id, sessao.id, "achado", anotacao)
             id_mensagem = await repositorio.inserir_mensagem(
                 ambiente.id, Identidade.nova(), "agente", "oi", False
             )
@@ -228,7 +229,7 @@ def test_nfr_p_01_carga_de_cinco_mil_anotacoes(tmp_path):
     repositorio = _abrir(tmp_path)
     try:
         ambiente = _ambiente_com_tarefa()
-        tarefa = ambiente.frentes[0].tarefas[0]
+        sessao = ambiente.frentes[0].tarefas[0].sessoes[0]
         executar(repositorio.salvar_ambiente(ambiente))
 
         agora = datetime.now(UTC).isoformat()
@@ -236,7 +237,7 @@ def test_nfr_p_01_carga_de_cinco_mil_anotacoes(tmp_path):
             (
                 str(uuid.uuid7()),
                 ambiente.id.valor,
-                tarefa.id.valor,
+                sessao.id.valor,
                 f"chave-{i % 20}",
                 "agente",
                 f"anotacao numero {i}",
@@ -247,7 +248,7 @@ def test_nfr_p_01_carga_de_cinco_mil_anotacoes(tmp_path):
         repositorio._conexao.execute("BEGIN IMMEDIATE")
         repositorio._conexao.executemany(
             "INSERT INTO anotacao "
-            "(id, id_ambiente, id_tarefa, chave, autor, valor, criada_em) "
+            "(id, id_ambiente, id_sessao, chave, autor, valor, criada_em) "
             "VALUES (?, ?, ?, ?, ?, ?, ?)",
             linhas,
         )
@@ -257,7 +258,7 @@ def test_nfr_p_01_carga_de_cinco_mil_anotacoes(tmp_path):
         carregado = executar(repositorio.carregar_ambiente(ambiente.id))
         decorrido = time.perf_counter() - inicio
 
-        assert carregado.frentes[0].tarefas[0].memoria.total_de_anotacoes() == 5000
+        assert carregado.frentes[0].tarefas[0].sessoes[0].memoria.total_de_anotacoes() == 5000
         assert decorrido < 5.0, f"carga levou {decorrido:.2f}s"
     finally:
         executar(repositorio.fechar())

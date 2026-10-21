@@ -189,6 +189,9 @@ class WikiDeArquivos:
     async def ler(self, localizador: str, caminho_pagina: str) -> ConteudoPagina:
         return await asyncio.to_thread(self._ler, localizador, caminho_pagina)
 
+    async def ler_index(self, localizador: str) -> str:
+        return await asyncio.to_thread(self._ler_index, localizador)
+
     async def escrever_proposta(self, localizador: str, proposta: PropostaWiki) -> None:
         await asyncio.to_thread(self._escrever_proposta, localizador, proposta)
 
@@ -233,6 +236,15 @@ class WikiDeArquivos:
         return ConteudoPagina(
             caminho=logico, titulo=titulo, descricao=descricao, conteudo=conteudo
         )
+
+    def _ler_index(self, localizador: str) -> str:
+        with traduzindo_erros("ler o indice"):
+            raiz = resolver_raiz(self._raiz_de_dados, localizador)
+            indice = resolver_sob(raiz, NOME_DO_INDICE, EXTENSAO)
+            if not indice.is_file():
+                raise PaginaInexistente("a wiki ainda nao tem indice")
+            with open(indice, encoding="utf-8", newline="\n") as entrada:
+                return entrada.read()
 
     # ----------------------------------------------------------------------
     # escrever_proposta (business-logic-model.md 4)

@@ -1,14 +1,15 @@
 # D01 — Ambiente → Frente → Tarefa
 
 Status: revisada
-Data do status: 2026-10-20
+Data do status: 2026-10-21
 
 ## O que é
 
 O trabalho é organizado em três níveis. O **ambiente** é o lugar inteiro (por exemplo, "Nexo
 Aquisição" ou "Meus estudos do semestre"). Dentro dele há **frentes**, as áreas de atuação. Dentro
-de cada frente há **tarefas**. É na tarefa que o trabalho acontece: ela guarda os chats com os
-agentes, as etapas (o passo a passo) e a memória compartilhada pelos agentes.
+de cada frente há **tarefas**. É na tarefa que o trabalho acontece: ela guarda as etapas (o passo a
+passo) e as sessões de trabalho. Desde 2026-10-21, os chats e a memória moram na sessão, um nível
+abaixo da tarefa (ver [D21](D21-sessoes-dentro-da-tarefa.md)).
 
 ## Por quê
 
@@ -23,4 +24,5 @@ corrigiu isso em 2026-08-25).
 - `src/fishingrod/dominio/ambiente.py`
 - `src/fishingrod/dominio/frente.py`
 - `src/fishingrod/dominio/tarefa.py`
+- `src/fishingrod/dominio/sessao.py`
 - `src/fishingrod/dominio/chat.py`, `src/fishingrod/dominio/etapa.py`, `src/fishingrod/dominio/memoria.py`

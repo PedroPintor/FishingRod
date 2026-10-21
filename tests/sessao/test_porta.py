@@ -85,7 +85,7 @@ def test_pbt_u6_12_o_resto_sai(texto):
 
 
 def _viva() -> SessaoViva:
-    contexto = ContextoDaSessao(Identidade.nova(), Identidade.nova(), Identidade.nova(), Identidade.nova())
+    contexto = ContextoDaSessao(*(Identidade.nova() for _ in range(5)))
     return SessaoViva(Identidade.nova(), "orquestrador", contexto)
 
 

@@ -23,6 +23,7 @@ from fishingrod.aplicacao.servicos.servico_de_ambiente import (
     ErroDeServicoDeAmbiente,
     FrenteInexistente,
     ServicoDeAmbiente,
+    SessaoInexistente,
     TarefaInexistente,
 )
 from fishingrod.dominio import Ambiente, ErroDeDominio, ExecutorEtapa, Identidade, NomeInvalido
@@ -42,12 +43,19 @@ class EtapaModelo:
 
 
 @dataclass
-class TarefaModelo:
+class SessaoModelo:
     id: Identidade
     nome: str
     chats: list[tuple[str, str]] = field(default_factory=list)  # (agente, nome do chat)
-    etapas: list[EtapaModelo] = field(default_factory=list)
     anotacoes: dict[str, list[tuple[str, str]]] = field(default_factory=dict)  # chave -> (autor, valor)
+
+
+@dataclass
+class TarefaModelo:
+    id: Identidade
+    nome: str
+    sessoes: list[SessaoModelo] = field(default_factory=list)
+    etapas: list[EtapaModelo] = field(default_factory=list)
 
 
 @dataclass
@@ -66,6 +74,9 @@ class AmbienteModelo:
     def tarefas(self) -> list[TarefaModelo]:
         return [tarefa for frente in self.frentes for tarefa in frente.tarefas]
 
+    def sessoes(self) -> list[SessaoModelo]:
+        return [sessao for tarefa in self.tarefas() for sessao in tarefa.sessoes]
+
     def etapas(self) -> list[EtapaModelo]:
         return [etapa for tarefa in self.tarefas() for etapa in tarefa.etapas]
 
@@ -83,15 +94,22 @@ def projetar(ambiente: Ambiente) -> AmbienteModelo:
                     TarefaModelo(
                         id=tarefa.id,
                         nome=tarefa.nome,
-                        chats=[(chat.agente.nome, chat.nome) for chat in tarefa.chats],
+                        sessoes=[
+                            SessaoModelo(
+                                id=sessao.id,
+                                nome=sessao.nome,
+                                chats=[(chat.agente.nome, chat.nome) for chat in sessao.chats],
+                                anotacoes={
+                                    chave: [(anotacao.autor, anotacao.valor) for anotacao in lista]
+                                    for chave, lista in sessao.memoria.anotacoes.items()
+                                },
+                            )
+                            for sessao in tarefa.sessoes
+                        ],
                         etapas=[
                             EtapaModelo(etapa.id, etapa.descricao, etapa.executor, etapa.concluida)
                             for etapa in tarefa.etapas
                         ],
-                        anotacoes={
-                            chave: [(anotacao.autor, anotacao.valor) for anotacao in lista]
-                            for chave, lista in tarefa.memoria.anotacoes.items()
-                        },
                     )
                     for tarefa in frente.tarefas
                 ],
@@ -112,9 +130,10 @@ def _nome_valido(texto: str) -> bool:
 # Que tipo de alvo cada operacao recebe.
 _ALVO = {
     "criar_tarefa": "frente",
-    "criar_chat": "tarefa",
+    "criar_sessao": "tarefa",
+    "criar_chat": "sessao",
     "criar_etapa": "tarefa",
-    "anotar_memoria": "tarefa",
+    "anotar_memoria": "sessao",
     "concluir_etapa": "etapa",
 }
 
@@ -157,6 +176,8 @@ def resolver(
             candidatos = [frente.id for frente in vista.frentes]
         elif tipo == "tarefa":
             candidatos = [tarefa.id for tarefa in vista.tarefas()]
+        elif tipo == "sessao":
+            candidatos = [sessao.id for sessao in vista.sessoes()]
         else:
             candidatos = [etapa.id for etapa in vista.etapas()]
         id_alvo = _escolher(candidatos, seletor_alvo)
@@ -170,6 +191,7 @@ _OPERACOES = {
     "apagar_ambiente": lambda s, c: s.apagar_ambiente(c.id_ambiente),
     "criar_frente": lambda s, c: s.criar_frente(c.id_ambiente, *c.argumentos),
     "criar_tarefa": lambda s, c: s.criar_tarefa(c.id_ambiente, c.id_alvo, *c.argumentos),
+    "criar_sessao": lambda s, c: s.criar_sessao(c.id_ambiente, c.id_alvo, *c.argumentos),
     "criar_chat": lambda s, c: s.criar_chat(c.id_ambiente, c.id_alvo, *c.argumentos),
     "criar_etapa": lambda s, c: s.criar_etapa(c.id_ambiente, c.id_alvo, *c.argumentos),
     "concluir_etapa": lambda s, c: s.concluir_etapa(c.id_ambiente, c.id_alvo),
@@ -232,16 +254,22 @@ class ModeloDeAmbientes:
         if operacao == "concluir_etapa":
             return None if self._etapa(ambiente, chamada.id_alvo) is not None else EtapaInexistente
 
+        if operacao in ("criar_chat", "anotar_memoria"):
+            if self._sessao(ambiente, chamada.id_alvo) is None:
+                return SessaoInexistente
+            if operacao == "criar_chat":
+                nome = argumentos[1]
+                return None if nome == "" or _nome_valido(nome) else NomeInvalido
+            chave, _, autor = argumentos
+            return None if _nome_valido(chave) and _nome_valido(autor) else NomeInvalido
+
         if self._tarefa(ambiente, chamada.id_alvo) is None:
             return TarefaInexistente
-        if operacao == "criar_chat":
-            nome = argumentos[1]
+        if operacao == "criar_sessao":
+            nome = argumentos[0]
             return None if nome == "" or _nome_valido(nome) else NomeInvalido
         if operacao == "criar_etapa":
             return None if _nome_valido(argumentos[0]) else NomeInvalido
-        if operacao == "anotar_memoria":
-            chave, _, autor = argumentos
-            return None if _nome_valido(chave) and _nome_valido(autor) else NomeInvalido
         raise AssertionError(f"operacao sem previsao: {operacao}")
 
     # --- efeito ---------------------------------------------------------
@@ -268,12 +296,24 @@ class ModeloDeAmbientes:
                 TarefaModelo(
                     devolvido.id,
                     argumentos[0],
-                    chats=[(ORQUESTRADOR.nome, ORQUESTRADOR.nome)],  # RN-A-21
+                    sessoes=[
+                        SessaoModelo(
+                            devolvido.sessoes[0].id,
+                            "sessão 1",
+                            chats=[(ORQUESTRADOR.nome, ORQUESTRADOR.nome)],  # RN-A-21
+                        )
+                    ],
                 )
+            )
+        elif operacao == "criar_sessao":
+            tarefa = self._tarefa(ambiente, chamada.id_alvo)
+            nome = argumentos[0] or f"sessão {len(tarefa.sessoes) + 1}"
+            tarefa.sessoes.append(
+                SessaoModelo(devolvido.id, nome, chats=[(ORQUESTRADOR.nome, ORQUESTRADOR.nome)])
             )
         elif operacao == "criar_chat":
             nome = argumentos[1] or BIBLIOTECARIO.nome
-            self._tarefa(ambiente, chamada.id_alvo).chats.append((BIBLIOTECARIO.nome, nome))
+            self._sessao(ambiente, chamada.id_alvo).chats.append((BIBLIOTECARIO.nome, nome))
         elif operacao == "criar_etapa":
             self._tarefa(ambiente, chamada.id_alvo).etapas.append(
                 EtapaModelo(devolvido.id, argumentos[0], argumentos[1])
@@ -282,7 +322,7 @@ class ModeloDeAmbientes:
             self._etapa(ambiente, chamada.id_alvo).concluida = True
         elif operacao == "anotar_memoria":
             chave, valor, autor = argumentos
-            self._tarefa(ambiente, chamada.id_alvo).anotacoes.setdefault(chave, []).append(
+            self._sessao(ambiente, chamada.id_alvo).anotacoes.setdefault(chave, []).append(
                 (autor, valor)
             )
         else:
@@ -297,6 +337,10 @@ class ModeloDeAmbientes:
     @staticmethod
     def _tarefa(ambiente: AmbienteModelo, id: Identidade | None) -> TarefaModelo | None:
         return next((t for t in ambiente.tarefas() if t.id == id), None)
+
+    @staticmethod
+    def _sessao(ambiente: AmbienteModelo, id: Identidade | None) -> SessaoModelo | None:
+        return next((s for s in ambiente.sessoes() if s.id == id), None)
 
     @staticmethod
     def _etapa(ambiente: AmbienteModelo, id: Identidade | None) -> EtapaModelo | None:

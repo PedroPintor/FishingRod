@@ -49,7 +49,7 @@ def ambientes_de_partida(draw: Any) -> Ambiente:
     acrescentadas pela mesma API publica quando o sorteio nao as trouxe.
 
     Sem isto, boa parte das sequencias comecava num ambiente vazio, e
-    `criar_chat` nunca dava certo - nao havia tarefa onde abrir o chat
+    `criar_chat` nunca dava certo - nao havia sessao onde abrir o chat
     (medido com --hypothesis-show-statistics na primeira versao).
     """
     ambiente = draw(ambientes())
@@ -92,7 +92,7 @@ async def semear(persistencia: Any, wiki: Any, ambiente: Ambiente, esquema: Esqu
     criado: banco e wiki, sem passar pelo servico que esta sob teste.
 
     E o que deixa as propriedades comecarem de um ambiente rico - frentes,
-    tarefas, chats e etapas gerados por `ambientes` de U2 - em vez de sempre do
+    tarefas, sessoes, chats e etapas gerados por `ambientes` de U2 - em vez de sempre do
     vazio.
     """
     localizador = ambiente.raiz_wiki.localizador
@@ -177,6 +177,9 @@ nomes_de_agente = ponderado(
 # "" vira o nome do agente (Chat, de U1); so espaco e nome invalido.
 nomes_de_chat = ponderado((2, st.just("")), (2, texto_nao_vazio), (1, st.just("   ")))
 
+# "" vira "sessão N" (Tarefa, de U1); so espaco e nome invalido.
+nomes_de_sessao = nomes_de_chat
+
 
 def _comando(operacao: str, alvo: bool, *argumentos: st.SearchStrategy) -> st.SearchStrategy[tuple]:
     return st.tuples(
@@ -187,6 +190,7 @@ def _comando(operacao: str, alvo: bool, *argumentos: st.SearchStrategy) -> st.Se
 comandos_de_estrutura = ponderado(
     (3, _comando("criar_frente", False, nomes)),
     (3, _comando("criar_tarefa", True, nomes)),
+    (2, _comando("criar_sessao", True, nomes_de_sessao)),
     (2, _comando("criar_chat", True, nomes_de_agente, nomes_de_chat)),
     (3, _comando("criar_etapa", True, nomes, executores)),
     (3, _comando("concluir_etapa", True)),
@@ -195,7 +199,7 @@ comandos_de_estrutura = ponderado(
 
 
 def comandos(*, criar: bool = False, apagar: bool = True) -> st.SearchStrategy[tuple]:
-    """As 10 operacoes. `apagar` e raro de proposito: depois dele, todo comando
+    """As 11 operacoes. `apagar` e raro de proposito: depois dele, todo comando
     sobre aquele ambiente e AmbienteInexistente, e uma sequencia que apagasse
     cedo demais exercitaria pouco."""
     pares: list[tuple[int, st.SearchStrategy]] = [

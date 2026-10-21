@@ -1,4 +1,4 @@
-"""Memoria por tarefa - blackboard (RN-09, RN-10, mata TD-03)."""
+"""Memoria por sessao - blackboard (RN-09, RN-10, D21, mata TD-03)."""
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime

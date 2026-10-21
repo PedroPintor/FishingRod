@@ -46,7 +46,7 @@ class _LinhaAmbiente:
 class _LinhaAnotacao:
     id: str
     id_ambiente: str
-    id_tarefa: str
+    id_sessao: str
     chave: str
     anotacao: Anotacao
 
@@ -133,8 +133,9 @@ class RepositorioEmMemoria:
         copia = copy.deepcopy(ambiente)
         for frente in copia.frentes:
             for tarefa in frente.tarefas:
-                tarefa.memoria.anotacoes = {}
-                tarefa.memoria.versao = 0
+                for sessao in tarefa.sessoes:
+                    sessao.memoria.anotacoes = {}
+                    sessao.memoria.versao = 0
         return copia
 
     async def carregar_ambiente(self, id: Identidade) -> Ambiente | None:
@@ -145,22 +146,23 @@ class RepositorioEmMemoria:
         ambiente = copy.deepcopy(linha.ambiente)
         ambiente.versao = linha.versao
 
-        tarefas = {
-            tarefa.id.valor: tarefa
+        sessoes = {
+            sessao.id.valor: sessao
             for frente in ambiente.frentes
             for tarefa in frente.tarefas
+            for sessao in tarefa.sessoes
         }
         # RN-P-10: a lista esta na ordem de escrita, e e essa a ordem que volta.
         for anotada in self._anotacoes:
             if anotada.id_ambiente != id.valor:
                 continue
-            tarefa = tarefas.get(anotada.id_tarefa)
-            if tarefa is None:
+            sessao = sessoes.get(anotada.id_sessao)
+            if sessao is None:
                 continue
-            tarefa.memoria.anotacoes.setdefault(anotada.chave, []).append(
+            sessao.memoria.anotacoes.setdefault(anotada.chave, []).append(
                 anotada.anotacao
             )
-            tarefa.memoria.versao += 1
+            sessao.memoria.versao += 1
 
         return ambiente
 
@@ -197,7 +199,7 @@ class RepositorioEmMemoria:
     async def anotar(
         self,
         id_ambiente: Identidade,
-        id_tarefa: Identidade,
+        id_sessao: Identidade,
         chave: str,
         anotacao: Anotacao,
     ) -> None:
@@ -209,7 +211,7 @@ class RepositorioEmMemoria:
             _LinhaAnotacao(
                 id=_novo_id(),
                 id_ambiente=id_ambiente.valor,
-                id_tarefa=id_tarefa.valor,
+                id_sessao=id_sessao.valor,
                 chave=chave,
                 anotacao=anotacao,
             )

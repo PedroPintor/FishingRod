@@ -1,11 +1,13 @@
-# D17 — A memória da tarefa é um quadro branco entre os agentes
+# D17 — A memória da sessão é um quadro branco entre os agentes
 
 Status: revisada
-Data do status: 2026-10-20
+Data do status: 2026-10-21
 
 ## O que é
 
-Cada tarefa tem uma memória compartilhada por todos os chats e agentes dela. Cada anotação guarda
+Cada sessão de uma tarefa tem uma memória compartilhada por todos os chats e agentes dela. Até
+2026-10-21 a memória era da tarefa; com as sessões ([D21](D21-sessoes-dentro-da-tarefa.md)), passou
+a ser de cada sessão, e uma sessão nova começa com a memória limpa. Cada anotação guarda
 quem escreveu, o que escreveu e quando. Anotar de novo sob o mesmo assunto não apaga a anotação
 anterior: as duas ficam.
 

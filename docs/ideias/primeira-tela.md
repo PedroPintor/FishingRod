@@ -1,6 +1,6 @@
 # Primeira tela
 
-Estado: ideia
+Estado: virou o [card 001](../cards/001-primeira-tela.md)
 De onde veio: conversa do Pedro com a IA, de 2026-10-15 a 2026-10-20.
 
 Objetivo: abro o FishingRod, vejo meus ambientes, crio um, entro nele, crio frentes e tarefas e
@@ -28,4 +28,6 @@ Rascunho de como testar:
 - [ ] Nome vazio mostra uma mensagem, sem quebrar o programa.
 - [ ] Apagar um ambiente avisa o que vai acontecer e pede confirmação.
 
-Esta ideia será aprofundada numa sessão de chat, que vai gerar o card 001.
+Aprofundada numa sessão de chat em 2026-10-20, que gerou o [card 001](../cards/001-primeira-tela.md).
+Nessa sessão o escopo cresceu: a tela do ambiente passou a mostrar também a wiki, os agentes e as
+abas de tarefas e de chats.

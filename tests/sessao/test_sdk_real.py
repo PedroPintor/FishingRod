@@ -579,7 +579,7 @@ def test_medicao_9_esquema_completo_das_acoes(tmp_path):
         registro = RegistroDeFerramentas(entradas_de_acoes(montagem.catalogo))
         sessoes = AdaptadorSessaoClaude(registro, _pasta(tmp_path), fabrica)
         quem = _agente(REGRA_DE_TESTE, ferramentas=tuple(e.nome for e in registro.entradas), papel=Papel.ORQUESTRADOR)
-        sessao = await sessoes.abrir(quem, ContextoDaSessao(ambiente.id, frente.id, tarefa.id, tarefa.chats[0].id))
+        sessao = await sessoes.abrir(quem, ContextoDaSessao(ambiente.id, frente.id, tarefa.id, tarefa.sessoes[0].id, tarefa.sessoes[0].chats[0].id))
         eventos, _ = await _turno(
             sessoes,
             sessao,
@@ -642,7 +642,7 @@ _FILHO = textwrap.dedent(
 
     async def main():
         sessoes = AdaptadorSessaoClaude(RegistroDeFerramentas([]), Path(sys.argv[1]))
-        contexto = ContextoDaSessao(*(Identidade.nova() for _ in range(4)))
+        contexto = ContextoDaSessao(*(Identidade.nova() for _ in range(5)))
         sessao = await sessoes.abrir(Agente("bibliotecario", Papel.SUB_AGENTE, "haiku"), contexto)
         async for _ in sessoes.enviar(sessao, "Responda apenas: ok."):
             pass

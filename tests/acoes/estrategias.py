@@ -6,7 +6,7 @@ ambiente de onde as propriedades partem e o mesmo que ja exercitou o servico.
 
 O catalogo e sempre testado contra o ServicoDeAmbiente REAL, sobre o
 RepositorioEmMemoria. A wiki e a de arquivos, numa pasta que nunca chega a
-existir: nenhuma das 6 acoes toca a wiki (o ciclo de vida do ambiente ficou
+existir: nenhuma das 7 acoes toca a wiki (o ciclo de vida do ambiente ficou
 fora, Q1=A), entao o ambiente de partida e semeado so no repositorio.
 """
 
@@ -52,10 +52,12 @@ from fishingrod.aplicacao.servicos.servico_de_ambiente import (
     EtapaInexistente,
     FrenteInexistente,
     ServicoDeAmbiente,
+    SessaoInexistente,
     TarefaInexistente,
 )
 from fishingrod.dominio import (
     AgenteInvalido,
+    Chamador,
     Ambiente,
     Frente,
     Identidade,
@@ -78,6 +80,8 @@ from tests.dobles.repositorio_memoria import RepositorioEmMemoria
 
 REGISTRO: dict[str, Acao] = {acao.nome: acao for acao in ACOES}
 NOMES_DAS_ACOES = tuple(REGISTRO)
+# As que o agente pode acionar: criar_sessao e so do usuario (D21).
+NOMES_DAS_ACOES_DO_AGENTE = tuple(acao.nome for acao in ACOES if Chamador.AGENTE in acao.chamadores)
 
 # Um id que nao existe em ambiente nenhum. Constante, e nao Identidade.nova():
 # o exemplo encolhido precisa ser o mesmo na reexecucao.
@@ -130,9 +134,9 @@ def tarefas_de(ambiente: Ambiente) -> list[tuple[Frente, Tarefa]]:
 
 
 def alvo_da_tarefa(ambiente: Ambiente, frente: Frente, tarefa: Tarefa) -> Alvo:
-    """O alvo que U9 amarra a um chat: o ambiente, a frente da tarefa e a
-    tarefa (RN-AC-11)."""
-    return Alvo(ambiente.id, frente.id, tarefa.id)
+    """O alvo que U9 amarra a um chat: o ambiente, a frente da tarefa, a
+    tarefa e a sessao do chat - aqui, a primeira (RN-AC-11)."""
+    return Alvo(ambiente.id, frente.id, tarefa.id, tarefa.sessoes[0].id)
 
 
 def tarefa_com_etapas(ambiente: Ambiente) -> tuple[Frente, Tarefa]:
@@ -436,6 +440,7 @@ def alvos_quaisquer(draw: Any, ambiente: Ambiente) -> Alvo:
         draw(ponderado((8, st.just(ambiente.id)), (1, st.just(INEXISTENTE)))),
         draw(_ids([frente.id for frente in ambiente.frentes])),
         draw(_ids([tarefa.id for _, tarefa in pares])),
+        draw(_ids([sessao.id for _, tarefa in pares for sessao in tarefa.sessoes])),
     )
 
 
@@ -458,6 +463,7 @@ ERROS_DA_TABELA: tuple[tuple[type[Exception], MotivoFalha], ...] = (
     (AmbienteInexistente, MotivoFalha.ALVO_INEXISTENTE),
     (FrenteInexistente, MotivoFalha.ALVO_INEXISTENTE),
     (TarefaInexistente, MotivoFalha.ALVO_INEXISTENTE),
+    (SessaoInexistente, MotivoFalha.ALVO_INEXISTENTE),
     (EtapaInexistente, MotivoFalha.ALVO_INEXISTENTE),
     (AgenteDesconhecido, MotivoFalha.ARGUMENTO_INVALIDO),
     (ConflitoDeVersao, MotivoFalha.CONFLITO),
@@ -531,6 +537,7 @@ def passos(draw: Any, vista: Any) -> Passo:
         draw(ponderado((12, st.just(vista.id)), (1, st.just(INEXISTENTE)))),
         draw(_ids([frente.id for frente in vista.frentes])),
         draw(_ids([tarefa.id for tarefa in tarefas])),
+        draw(_ids([sessao.id for sessao in vista.sessoes()])),
     )
     pela_barra = draw(st.booleans())
     if not draw(ponderado((12, st.just(True)), (1, st.just(False)))):

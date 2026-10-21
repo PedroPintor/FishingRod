@@ -1,4 +1,4 @@
-"""Chat - uma aba de conversa dentro de uma tarefa (components.md 2.5)."""
+"""Chat - uma aba de conversa dentro de uma sessao (components.md 2.5)."""
 
 from dataclasses import dataclass, field
 

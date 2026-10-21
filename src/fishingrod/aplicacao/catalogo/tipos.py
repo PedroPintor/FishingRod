@@ -3,7 +3,7 @@ e o Resultado.
 
 Este e o vocabulario com que a tela (U9), o agente (U6) e o catalogo conversam
 (domain-entities.md). Nenhuma entidade de dominio nasce aqui: Ambiente, Frente,
-Tarefa, Etapa, Chat e Anotacao continuam sendo de U1.
+Tarefa, Sessao, Etapa, Chat e Anotacao continuam sendo de U1.
 
 RN-AC-01: sem I/O e sem nada de fora do dominio. O ServicoDeAmbiente aparece so
 na anotacao de tipo de `Efetivar`, importado sob TYPE_CHECKING: em tempo de
@@ -17,7 +17,7 @@ from enum import Enum
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
-from fishingrod.dominio import Chamador, Etapa, Frente, Identidade, Tarefa
+from fishingrod.dominio import Chamador, Etapa, Frente, Identidade, Sessao, Tarefa
 
 if TYPE_CHECKING:
     from fishingrod.aplicacao.servicos.servico_de_ambiente import ServicoDeAmbiente
@@ -36,6 +36,7 @@ class Escopo(Enum):
     AMBIENTE = "ambiente"
     FRENTE = "frente"
     TAREFA = "tarefa"
+    SESSAO = "sessao"
 
 
 class TipoParametro(Enum):
@@ -77,6 +78,7 @@ class Alvo:
     id_ambiente: Identidade
     id_frente: Identidade | None = None
     id_tarefa: Identidade | None = None
+    id_sessao: Identidade | None = None
 
 
 # O autor que assina o que o usuario escreve - o mesmo texto que U4 e a tela
@@ -130,6 +132,7 @@ class Referencias:
 
     frente: Frente | None = None
     tarefa: Tarefa | None = None
+    sessao: Sessao | None = None
     etapa: EtapaNaPosicao | None = None
 
 

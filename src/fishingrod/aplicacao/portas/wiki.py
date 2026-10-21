@@ -136,9 +136,10 @@ class PropostaWiki:
 
 
 class PortaWiki(Protocol):
-    """As cinco operacoes. Semantica completa em business-logic-model.md 2-5;
+    """As seis operacoes. Semantica completa em business-logic-model.md 2-5;
     `apagar` foi acrescentada por U4 (Q6=A) e esta em
-    construction/ambiente/functional-design/domain-entities.md 5.
+    construction/ambiente/functional-design/domain-entities.md 5; `ler_index`,
+    pela primeira tela (card 001), que mostra o indice ao usuario.
 
     `localizador` e o texto de RaizWiki ("dados:wikis/<id>"), e os caminhos sao
     logicos ("clientes/dr-marcelo", sem extensao) - nunca caminho de sistema
@@ -161,6 +162,15 @@ class PortaWiki(Protocol):
 
         Frontmatter ausente devolve titulo e descricao vazios, e a leitura NAO
         falha (RN-W-15). Sem limite de tamanho (RN-W-32).
+        """
+        ...
+
+    async def ler_index(self, localizador: str) -> str:
+        """O texto do index.md, como esta no disco. So leitura: quem o escreve e
+        renderizar_index.
+
+        Raiz que ainda nao foi renderizada e PaginaInexistente - toda wiki que o
+        app cria ja nasce com indice (RN-W-25).
         """
         ...
 

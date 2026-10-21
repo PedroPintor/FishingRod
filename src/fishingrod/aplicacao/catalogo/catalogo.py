@@ -26,7 +26,7 @@ from fishingrod.aplicacao.catalogo.argumentos import (
     sem_maiuscula_nem_acento,
 )
 from fishingrod.aplicacao.catalogo.parser import ComandoDigitado
-from fishingrod.aplicacao.catalogo.registro import ACOES, achar_frente, achar_tarefa
+from fishingrod.aplicacao.catalogo.registro import ACOES, achar_frente, achar_sessao, achar_tarefa
 from fishingrod.aplicacao.catalogo.tipos import (
     Acao,
     Acionamento,
@@ -52,6 +52,7 @@ from fishingrod.aplicacao.servicos.servico_de_ambiente import (
     EtapaInexistente,
     FrenteInexistente,
     ServicoDeAmbiente,
+    SessaoInexistente,
     TarefaInexistente,
 )
 from fishingrod.dominio import Chamador, ErroDeDominio, exige_aprovacao
@@ -196,6 +197,8 @@ def _traduzir(erro: Exception) -> Resultado | None:
             return Resultado.falha(MotivoFalha.ALVO_INEXISTENTE, alvo="frente")
         case TarefaInexistente():
             return Resultado.falha(MotivoFalha.ALVO_INEXISTENTE, alvo="tarefa")
+        case SessaoInexistente():
+            return Resultado.falha(MotivoFalha.ALVO_INEXISTENTE, alvo="sessao")
         case EtapaInexistente():
             return Resultado.falha(MotivoFalha.ALVO_INEXISTENTE, alvo="etapa")
         case AgenteDesconhecido():
@@ -397,6 +400,9 @@ class CatalogoDeAcoes:
             return Referencias()
         if acao.escopo is Escopo.FRENTE:
             return Referencias(frente=achar_frente(ambiente, alvo.id_frente))
+        if acao.escopo is Escopo.SESSAO:
+            frente, tarefa, sessao = achar_sessao(ambiente, alvo.id_sessao)
+            return Referencias(frente=frente, tarefa=tarefa, sessao=sessao)
         frente, tarefa = achar_tarefa(ambiente, alvo.id_tarefa)
         etapa = None
         for parametro in acao.parametros:
@@ -417,4 +423,6 @@ def _falta_no_alvo(escopo: Escopo, alvo: Alvo) -> str | None:
         return "frente"
     if escopo is Escopo.TAREFA and alvo.id_tarefa is None:
         return "tarefa"
+    if escopo is Escopo.SESSAO and alvo.id_sessao is None:
+        return "sessao"
     return None

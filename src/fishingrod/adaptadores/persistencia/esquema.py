@@ -16,6 +16,11 @@ import sqlite3
 # Sao perguntas diferentes e vao mudar em momentos diferentes. Acrescentar uma
 # coluna em `anotacao` nao muda o formato do documento; renomear um campo dentro
 # do JSON nao muda tabela nenhuma.
+#
+# A sessao (D21) mudou as duas coisas - o JSON ganhou `sessoes` e `anotacao`
+# trocou id_tarefa por id_sessao - sem subir nenhuma das versoes: quando
+# mudou, nenhum banco de usuario existia, porque o programa ainda nao tinha
+# tela. A partir da primeira tela, mudanca assim sobe a versao.
 VERSAO_ESQUEMA_FISICO = 1
 VERSAO_DOCUMENTO = 1
 
@@ -33,7 +38,7 @@ CREATE TABLE IF NOT EXISTS ambiente (
 CREATE TABLE IF NOT EXISTS anotacao (
     id          TEXT NOT NULL PRIMARY KEY,
     id_ambiente TEXT NOT NULL REFERENCES ambiente(id) ON DELETE CASCADE,
-    id_tarefa   TEXT NOT NULL,
+    id_sessao   TEXT NOT NULL,
     chave       TEXT NOT NULL,
     autor       TEXT NOT NULL,
     valor       TEXT NOT NULL,
@@ -58,11 +63,11 @@ CREATE TABLE IF NOT EXISTS uso_ferramenta (
     criado_em   TEXT NOT NULL
 );
 
--- R-CG-1: o indice comeca em id_ambiente, e nao em id_tarefa, porque RN-P-11
--- diz que a carga traz a memoria de TODAS as tarefas de uma vez. O unico
+-- R-CG-1: o indice comeca em id_ambiente, e nao em id_sessao, porque RN-P-11
+-- diz que a carga traz a memoria de TODAS as sessoes de uma vez. O unico
 -- caminho de leitura que existe filtra por ambiente.
 CREATE INDEX IF NOT EXISTS idx_anotacao_ambiente
-    ON anotacao(id_ambiente, id_tarefa, id);
+    ON anotacao(id_ambiente, id_sessao, id);
 
 -- NFR-P-04: e este indice que faz listar_mensagens ser funcao de `limite`, e
 -- nao do tamanho do chat.

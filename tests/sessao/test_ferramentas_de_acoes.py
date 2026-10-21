@@ -41,6 +41,8 @@ from tests.ambiente.estrategias import ambientes_de_partida
 from tests.sessao.estrategias import BIBLIOTECARIO, ORQUESTRADOR, executar, parametros_validos, ponderado
 
 REGISTRO = {acao.nome: acao for acao in ACOES}
+# As acoes que viram ferramenta: criar_sessao e so do usuario (D21).
+ACOES_DO_AGENTE = tuple(acao for acao in ACOES if Chamador.AGENTE in acao.chamadores)
 
 
 def _ambiente_simples(etapas: int = 0):
@@ -56,7 +58,7 @@ def _ambiente_simples(etapas: int = 0):
 
 
 def _contexto(ambiente, frente, tarefa) -> ContextoDaSessao:
-    return ContextoDaSessao(ambiente.id, frente.id, tarefa.id, tarefa.chats[0].id)
+    return ContextoDaSessao(ambiente.id, frente.id, tarefa.id, tarefa.sessoes[0].id, tarefa.sessoes[0].chats[0].id)
 
 
 def _ferramentas(catalogo: CatalogoDeAcoes, contexto: ContextoDaSessao, agente=ORQUESTRADOR) -> dict[str, Ferramenta]:
@@ -73,7 +75,8 @@ def _ferramentas(catalogo: CatalogoDeAcoes, contexto: ContextoDaSessao, agente=O
 def test_rn_s_46_uma_entrada_por_acao_do_agente_na_ordem_do_registro():
     entradas = entradas_de_acoes(CatalogoDeAcoes(servico=None, confirmacao=None))
 
-    assert [e.nome for e in entradas] == [a.nome for a in ACOES]
+    assert [e.nome for e in entradas] == [a.nome for a in ACOES_DO_AGENTE]
+    assert "criar_sessao" not in [e.nome for e in entradas]
     assert {e.familia for e in entradas} == {Familia.AMBIENTE}
 
 
@@ -89,12 +92,12 @@ def test_rn_s_46_acao_so_do_usuario_nao_vira_ferramenta():
 def test_rn_s_46_a_ferramenta_tem_o_nome_e_a_descricao_da_acao(tmp_path):
     async def cenario():
         montagem = await montar(tmp_path, None, ConfirmacaoFixa(True))
-        contexto = ContextoDaSessao(Identidade.nova(), Identidade.nova(), Identidade.nova(), Identidade.nova())
+        contexto = ContextoDaSessao(*(Identidade.nova() for _ in range(5)))
         return _ferramentas(montagem.catalogo, contexto)
 
     ferramentas = executar(cenario())
 
-    for acao in ACOES:
+    for acao in ACOES_DO_AGENTE:
         assert ferramentas[acao.nome].descricao == acao.descricao
         assert ferramentas[acao.nome].esquema == esquema_de(acao.parametros)
 
@@ -184,7 +187,7 @@ def argumentos_do_esquema(draw: Any, esquema: dict) -> dict[str, object]:
 
 # Parametrizado pela acao: medido no passo 25, o sorteio deixava acoes sem o
 # caminho de "sim" ou de "nao". 6 x 17 = ~100 exemplos.
-@pytest.mark.parametrize("nome", [a.nome for a in ACOES])
+@pytest.mark.parametrize("nome", [a.nome for a in ACOES_DO_AGENTE])
 @settings(max_examples=17)
 @given(st.data(), st.booleans())
 def test_pbt_u6_06_esquema_e_catalogo_concordam(tmp_path, nome, data, sim):
@@ -230,8 +233,11 @@ def resultados(draw: Any, tipo: str) -> tuple[Resultado, Any]:
             return Resultado.ok(frente), ambiente
         case "tarefa":
             return Resultado.ok(tarefa), ambiente
+        case "sessao":
+            return Resultado.ok(draw(st.sampled_from(tarefa.sessoes))), ambiente
         case "chat":
-            return Resultado.ok(draw(st.sampled_from(tarefa.chats))), ambiente
+            chats = [chat for sessao in tarefa.sessoes for chat in sessao.chats]
+            return Resultado.ok(draw(st.sampled_from(chats))), ambiente
         case "etapa":
             posicao = draw(st.integers(1, len(tarefa.etapas)))
             return Resultado.ok(EtapaNaPosicao(tarefa.etapas[posicao - 1], posicao)), ambiente
@@ -247,7 +253,9 @@ def _identidades(ambiente) -> list[str]:
     for frente in ambiente.frentes:
         ids.append(frente.id)
         for tarefa in frente.tarefas:
-            ids += [tarefa.id, *(c.id for c in tarefa.chats), *(e.id for e in tarefa.etapas)]
+            ids += [tarefa.id, *(e.id for e in tarefa.etapas)]
+            for sessao in tarefa.sessoes:
+                ids += [sessao.id, *(c.id for c in sessao.chats)]
     return [str(i) for i in ids]
 
 
@@ -266,8 +274,8 @@ class _CatalogoFixo:
 
 
 # Parametrizado pelo tipo: medido no passo 25, o sorteio deixava Frente em um
-# terco dos exemplos e motivos de falha de fora. 15 tipos x 10 = 150 exemplos.
-_TIPOS_DE_RESULTADO = ["frente", "tarefa", "chat", "etapa", "anotacao", *(m.value for m in MotivoFalha)]
+# terco dos exemplos e motivos de falha de fora. 16 tipos x 10 = 160 exemplos.
+_TIPOS_DE_RESULTADO = ["frente", "tarefa", "sessao", "chat", "etapa", "anotacao", *(m.value for m in MotivoFalha)]
 
 
 @pytest.mark.parametrize("tipo", _TIPOS_DE_RESULTADO)
@@ -278,7 +286,7 @@ def test_pbt_u6_07_texto_do_agente_ida_e_volta(tipo, data):
     resultado, ambiente = gerado
     event("sucesso: " + type(resultado.dado).__name__ if resultado.sucesso else "falha: " + resultado.motivo.value)
     entrada = entradas_de_acoes(_CatalogoFixo(resultado))[0]
-    ferramenta = entrada.fabrica(ContextoDaSessao(ambiente.id, ambiente.id, ambiente.id, ambiente.id), ORQUESTRADOR)
+    ferramenta = entrada.fabrica(ContextoDaSessao(ambiente.id, ambiente.id, ambiente.id, ambiente.id, ambiente.id), ORQUESTRADOR)
 
     resposta = executar(ferramenta.executar({}))
 
@@ -302,11 +310,13 @@ def test_rn_s_51_projecao_de_cada_tipo_de_dado():
     ambiente = Ambiente("Nexo")
     frente = ambiente.criar_frente("Comercial")
     tarefa = frente.criar_tarefa("Campanha de verão", ORQUESTRADOR)
-    chat = tarefa.criar_chat(Agente("bibliotecario", Papel.SUB_AGENTE, "m"), "Pesquisa")
+    sessao = tarefa.criar_sessao(ORQUESTRADOR, "revisão")
+    chat = sessao.criar_chat(Agente("bibliotecario", Papel.SUB_AGENTE, "m"), "Pesquisa")
     etapa = tarefa.criar_etapa("revisar o briefing", ExecutorEtapa.USUARIO)
 
     assert texto_do_resultado(Resultado.ok(frente)) == '{"ok":true,"frente":{"nome":"Comercial"}}'
     assert texto_do_resultado(Resultado.ok(tarefa)) == '{"ok":true,"tarefa":{"nome":"Campanha de verão"}}'
+    assert texto_do_resultado(Resultado.ok(sessao)) == '{"ok":true,"sessao":{"nome":"revisão"}}'
     assert texto_do_resultado(Resultado.ok(chat)) == '{"ok":true,"chat":{"nome":"Pesquisa","agente":"bibliotecario"}}'
     assert texto_do_resultado(Resultado.ok(EtapaNaPosicao(etapa, 3))) == (
         '{"ok":true,"etapa":{"posicao":3,"descricao":"revisar o briefing","executor":"usuario","concluida":false}}'
@@ -364,7 +374,8 @@ def test_rn_s_48_anotar_memoria_e_assinada_pelo_nome_do_agente(tmp_path):
         ferramenta = _ferramentas(montagem.catalogo, _contexto(ambiente, frente, tarefa))["anotar_memoria"]
         resposta = await ferramenta.executar({"chave": "tom", "valor": "mais formal"})
         aberto = await montagem.aberto(ambiente.id)
-        anotacoes = aberto.buscar_frente(frente.id).buscar_tarefa(tarefa.id).memoria.anotacoes["tom"]
+        sessao = aberto.buscar_frente(frente.id).buscar_tarefa(tarefa.id).sessoes[0]
+        anotacoes = sessao.memoria.anotacoes["tom"]
         return resposta, anotacoes, confirmacao.pedidos
 
     resposta, anotacoes, pedidos = executar(cenario())

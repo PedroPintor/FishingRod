@@ -49,12 +49,12 @@ def test_us_05_o_ambiente_sobrevive_a_fechar_e_reabrir(tmp_path):
         ambiente = await servico.criar_ambiente("Nexo Aquisição", ESQUEMA)
         frente = await servico.criar_frente(ambiente.id, "Aquisição")
         tarefa = await servico.criar_tarefa(ambiente.id, frente.id, "Prospectar dentistas")
-        await servico.criar_chat(ambiente.id, tarefa.id, BIBLIOTECARIO.nome, "wiki")
+        await servico.criar_chat(ambiente.id, tarefa.sessoes[0].id, BIBLIOTECARIO.nome, "wiki")
         etapa = await servico.criar_etapa(ambiente.id, tarefa.id, "listar 20 clínicas", ExecutorEtapa.AGENTE)
         await servico.criar_etapa(ambiente.id, tarefa.id, "ligar para 5", ExecutorEtapa.USUARIO)
         await servico.concluir_etapa(ambiente.id, etapa.id)
-        await servico.anotar_memoria(ambiente.id, tarefa.id, "icp", "dentistas", "orquestrador")
-        await servico.anotar_memoria(ambiente.id, tarefa.id, "icp", "clínicas pequenas", "usuário")
+        await servico.anotar_memoria(ambiente.id, tarefa.sessoes[0].id, "icp", "dentistas", "orquestrador")
+        await servico.anotar_memoria(ambiente.id, tarefa.sessoes[0].id, "icp", "clínicas pequenas", "usuário")
         return ambiente
 
     async def reabrir(servico):
@@ -66,12 +66,12 @@ def test_us_05_o_ambiente_sobrevive_a_fechar_e_reabrir(tmp_path):
     assert reaberto == original
     assert reaberto is not original
     [tarefa] = reaberto.frentes[0].tarefas
-    assert [(c.agente, c.nome) for c in tarefa.chats] == [
+    assert [(c.agente, c.nome) for c in tarefa.sessoes[0].chats] == [
         (ORQUESTRADOR, ORQUESTRADOR.nome),
         (BIBLIOTECARIO, "wiki"),
     ]
     assert [e.concluida for e in tarefa.etapas] == [True, False]
-    assert [a.valor for a in tarefa.memoria.anotacoes["icp"]] == ["dentistas", "clínicas pequenas"]
+    assert [a.valor for a in tarefa.sessoes[0].memoria.anotacoes["icp"]] == ["dentistas", "clínicas pequenas"]
     assert [(r.id, r.nome) for r in resumos] == [(original.id, "Nexo Aquisição")]
 
 

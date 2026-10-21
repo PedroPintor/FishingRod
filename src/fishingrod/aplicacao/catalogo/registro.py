@@ -1,4 +1,4 @@
-"""O registro: as 6 acoes do ambiente, como dado (U5, RN-AC-05).
+"""O registro: as 7 acoes do ambiente, como dado (U5, RN-AC-05).
 
 A paleta, os botoes e as ferramentas do orquestrador leem esta mesma tupla
 (criterio 2). Ficam FORA (Q1=A): criar, carregar, listar e apagar ambiente, que
@@ -29,6 +29,7 @@ from fishingrod.aplicacao.servicos.servico_de_ambiente import (
     EtapaInexistente,
     FrenteInexistente,
     ServicoDeAmbiente,
+    SessaoInexistente,
     TarefaInexistente,
 )
 from fishingrod.dominio import (
@@ -40,10 +41,11 @@ from fishingrod.dominio import (
     ExecutorEtapa,
     Frente,
     Identidade,
+    Sessao,
     Tarefa,
 )
 
-# Q2=B, D-Q2-1: nesta iteracao as 6 aceitam os dois. O agente sempre passa pela
+# Q2=B, D-Q2-1: nesta iteracao as 6 primeiras aceitam os dois. O agente sempre passa pela
 # confirmacao - quem decide isso e a politica, consultada pelo catalogo.
 _OS_DOIS = frozenset({Chamador.USUARIO, Chamador.AGENTE})
 
@@ -82,6 +84,17 @@ def achar_tarefa(ambiente: Ambiente, id_tarefa: Identidade) -> tuple[Frente, Tar
     raise TarefaInexistente(f"nao existe a tarefa [{id_tarefa}] neste ambiente")
 
 
+def achar_sessao(ambiente: Ambiente, id_sessao: Identidade) -> tuple[Frente, Tarefa, Sessao]:
+    """A sessao, a tarefa e a frente dela: a confirmacao mostra as tres pelo
+    nome."""
+    for frente in ambiente.frentes:
+        for tarefa in frente.tarefas:
+            sessao = tarefa.buscar_sessao(id_sessao)
+            if sessao is not None:
+                return frente, tarefa, sessao
+    raise SessaoInexistente(f"nao existe a sessao [{id_sessao}] neste ambiente")
+
+
 async def _na_posicao(servico: ServicoDeAmbiente, alvo: Alvo, etapa: Etapa) -> EtapaNaPosicao:
     """G5: a etapa com a posicao, para quem acionou poder aponta-la depois.
 
@@ -98,7 +111,7 @@ async def _na_posicao(servico: ServicoDeAmbiente, alvo: Alvo, etapa: Etapa) -> E
 
 
 # --------------------------------------------------------------------------
-# As 6 acoes (domain-entities.md 2.5)
+# As 7 acoes (domain-entities.md 2.5)
 # --------------------------------------------------------------------------
 # Escopo e parametros ja foram conferidos: a identidade que o escopo exige
 # existe no Alvo, e todo obrigatorio esta em `argumentos`.
@@ -126,6 +139,17 @@ async def _criar_tarefa(
     return await servico.criar_tarefa(alvo.id_ambiente, alvo.id_frente, argumentos["nome"])
 
 
+async def _criar_sessao(
+    servico: ServicoDeAmbiente,
+    alvo: Alvo,
+    argumentos: Mapping[str, object],
+    referencias: Referencias,
+    acionamento: Acionamento,
+) -> Sessao:
+    # `nome` ausente vira "", que a Tarefa de U1 troca por "sessão N".
+    return await servico.criar_sessao(alvo.id_ambiente, alvo.id_tarefa, argumentos.get("nome", ""))
+
+
 async def _criar_chat(
     servico: ServicoDeAmbiente,
     alvo: Alvo,
@@ -136,7 +160,7 @@ async def _criar_chat(
     # R-CG5-4: `nome` opcional ausente nao chega aqui; "" e o padrao, que o
     # Chat de U1 troca pelo nome do agente. A lista fechada e de U4 (RN-A-22).
     return await servico.criar_chat(
-        alvo.id_ambiente, alvo.id_tarefa, argumentos["agente"], argumentos.get("nome", "")
+        alvo.id_ambiente, alvo.id_sessao, argumentos["agente"], argumentos.get("nome", "")
     )
 
 
@@ -180,7 +204,7 @@ async def _anotar_memoria(
     # parametro `autor`.
     return await servico.anotar_memoria(
         alvo.id_ambiente,
-        alvo.id_tarefa,
+        alvo.id_sessao,
         argumentos["chave"],
         argumentos["valor"],
         acionamento.autor,
@@ -202,16 +226,33 @@ ACOES: tuple[Acao, ...] = (
     ),
     Acao(
         nome="criar_tarefa",
-        descricao="Cria uma tarefa na frente, já com o chat do orquestrador.",
+        descricao="Cria uma tarefa na frente, já com uma sessão e o chat do orquestrador.",
         escopo=Escopo.FRENTE,
         parametros=(_texto("nome", "Nome da tarefa.", MAXIMO_NOME),),
         chamadores=_OS_DOIS,
         efetivar=_criar_tarefa,
     ),
+    # D21: so o usuario abre sessao. O agente vive dentro de uma sessao, e
+    # abrir outra e decisao de quem esta trabalhando, nao dele.
+    Acao(
+        nome="criar_sessao",
+        descricao="Abre uma sessão nova na tarefa, já com o chat do orquestrador.",
+        escopo=Escopo.TAREFA,
+        parametros=(
+            _texto(
+                "nome",
+                "Nome da sessão. Sem ele, a sessão se chama \"sessão\" e o número dela.",
+                MAXIMO_NOME,
+                obrigatorio=False,
+            ),
+        ),
+        chamadores=frozenset({Chamador.USUARIO}),
+        efetivar=_criar_sessao,
+    ),
     Acao(
         nome="criar_chat",
-        descricao="Abre um chat na tarefa com um dos agentes disponíveis.",
-        escopo=Escopo.TAREFA,
+        descricao="Abre um chat na sessão com um dos agentes disponíveis.",
+        escopo=Escopo.SESSAO,
         parametros=(
             _texto("agente", "Nome do agente do chat.", MAXIMO_AGENTE),
             _texto(
@@ -256,8 +297,8 @@ ACOES: tuple[Acao, ...] = (
     ),
     Acao(
         nome="anotar_memoria",
-        descricao="Acrescenta uma anotação à memória da tarefa, assinada por quem anotou.",
-        escopo=Escopo.TAREFA,
+        descricao="Acrescenta uma anotação à memória da sessão, assinada por quem anotou.",
+        escopo=Escopo.SESSAO,
         parametros=(
             _texto("chave", "Assunto da anotação. Pela barra, uma palavra só.", MAXIMO_CHAVE),
             _texto("valor", "O que anotar.", MAXIMO_VALOR),

@@ -28,7 +28,7 @@ from fishingrod.aplicacao.catalogo.tipos import (
 )
 from fishingrod.aplicacao.ferramentas.tipos import EntradaDoRegistro, Ferramenta, RespostaDaFerramenta
 from fishingrod.aplicacao.portas.sessao import ContextoDaSessao, Familia
-from fishingrod.dominio import Agente, Anotacao, Chamador, Chat, Frente, Tarefa
+from fishingrod.dominio import Agente, Anotacao, Chamador, Chat, Frente, Sessao, Tarefa
 
 # R-ND6-14: o aviso de `dado` desconhecido (G12). O NullHandler fica aqui pelo
 # mesmo motivo de U2-U5: sem destino configurado, nada vaza para a tela.
@@ -46,7 +46,9 @@ def _entrada(catalogo: CatalogoDeAcoes, acao: Acao) -> EntradaDoRegistro:
     esquema = esquema_de(acao.parametros)
 
     def fabricar(contexto: ContextoDaSessao, agente: Agente) -> Ferramenta:
-        alvo = Alvo(contexto.id_ambiente, contexto.id_frente, contexto.id_tarefa)
+        alvo = Alvo(
+            contexto.id_ambiente, contexto.id_frente, contexto.id_tarefa, contexto.id_sessao
+        )
         acionamento = Acionamento.agente(agente.nome)
 
         async def executar(argumentos: Mapping[str, object]) -> RespostaDaFerramenta:
@@ -142,6 +144,8 @@ def _projecao(dado: object) -> dict[str, object]:
             return {"frente": {"nome": dado.nome}}
         case Tarefa():
             return {"tarefa": {"nome": dado.nome}}
+        case Sessao():
+            return {"sessao": {"nome": dado.nome}}
         case Chat():
             return {"chat": {"nome": dado.nome, "agente": dado.agente.nome}}
         case EtapaNaPosicao(etapa=etapa, posicao=posicao):

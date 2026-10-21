@@ -14,7 +14,7 @@ class NomeInvalido(ErroDeDominio):
 
 
 class OrquestradorDuplicado(ErroDeDominio):
-    """Tentativa de por um segundo orquestrador na mesma tarefa (RN-06)."""
+    """Tentativa de por um segundo orquestrador na mesma sessao (RN-06)."""
 
 
 class AgenteInvalido(ErroDeDominio):

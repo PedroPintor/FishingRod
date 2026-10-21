@@ -68,7 +68,7 @@ def _ambiente() -> tuple[Ambiente, Frente, Tarefa]:
 
 
 def _alvo(ambiente: Ambiente, frente: Frente, tarefa: Tarefa) -> Alvo:
-    return Alvo(ambiente.id, frente.id, tarefa.id)
+    return Alvo(ambiente.id, frente.id, tarefa.id, tarefa.sessoes[0].id)
 
 
 def _falha(resultado: Resultado) -> tuple:
@@ -246,7 +246,13 @@ def test_argumento_invalido(tmp_path):
 
 @pytest.mark.parametrize(
     ("linha", "falta"),
-    [("/criar-tarefa x", "frente"), ("/criar-tarefa", "frente"), ("/concluir-etapa dois", "tarefa")],
+    [
+        ("/criar-tarefa x", "frente"),
+        ("/criar-tarefa", "frente"),
+        ("/concluir-etapa dois", "tarefa"),
+        ("/criar-sessao", "tarefa"),
+        ("/anotar-memoria k", "sessao"),
+    ],
 )
 def test_alvo_ausente_antes_dos_argumentos_e_sem_ler_nada(tmp_path, linha, falta):
     """R-CG5-2: o texto so e repartido no passo 4, entao o alvo incompleto
@@ -269,7 +275,16 @@ def test_alvo_inexistente(tmp_path):
             await executar_("criar_frente", Alvo(INEXISTENTE), {"nome": "x"}, USUARIO),
             await executar_("criar_tarefa", Alvo(ambiente.id, INEXISTENTE), {"nome": "x"}, USUARIO),
             await executar_(
-                "anotar_memoria", Alvo(ambiente.id, frente.id, INEXISTENTE), {"chave": "k", "valor": "v"}, USUARIO
+                "criar_etapa",
+                Alvo(ambiente.id, frente.id, INEXISTENTE),
+                {"executor": "agente", "descricao": "x"},
+                USUARIO,
+            ),
+            await executar_(
+                "anotar_memoria",
+                Alvo(ambiente.id, frente.id, tarefa.id, INEXISTENTE),
+                {"chave": "k", "valor": "v"},
+                USUARIO,
             ),
             await executar_("concluir_etapa", _alvo(ambiente, frente, tarefa), {"posicao": 3}, USUARIO),
             m.visto.mudancas(),
@@ -281,6 +296,7 @@ def test_alvo_inexistente(tmp_path):
         (MotivoFalha.ALVO_INEXISTENTE, {"alvo": "ambiente"}),
         (MotivoFalha.ALVO_INEXISTENTE, {"alvo": "frente"}),
         (MotivoFalha.ALVO_INEXISTENTE, {"alvo": "tarefa"}),
+        (MotivoFalha.ALVO_INEXISTENTE, {"alvo": "sessao"}),
         (MotivoFalha.ALVO_INEXISTENTE, {"alvo": "etapa", "posicao": "3", "total": "2"}),
     ]
     assert mudancas == []
@@ -410,7 +426,7 @@ def test_criterio_6_criar_chat_so_com_agente_da_lista(tmp_path, agente, sucesso)
         )
         aberto = await m.aberto(ambiente.id)
         depois = aberto.frentes[0].tarefas[0]
-        return resultado, [(c.agente.nome, c.nome) for c in depois.chats]
+        return resultado, [(c.agente.nome, c.nome) for c in depois.sessoes[0].chats]
 
     resultado, chats = _cenario(tmp_path, ConfirmacaoProibida(), corpo)
 
@@ -455,7 +471,7 @@ def test_rn_ac_13_o_autor_e_quem_acionou(tmp_path):
             "anotar_memoria", alvo, {"chave": "icp", "valor": "x", "autor": "usuario"}, AGENTE
         )
         aberto = await m.aberto(ambiente.id)
-        anotacoes = aberto.frentes[0].tarefas[0].memoria.anotacoes["icp"]
+        anotacoes = aberto.frentes[0].tarefas[0].sessoes[0].memoria.anotacoes["icp"]
         return pelo_usuario, pelo_agente, com_autor, [(a.autor, a.valor) for a in anotacoes]
 
     porta = ConfirmacaoFixa(True)

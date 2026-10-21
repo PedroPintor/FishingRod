@@ -521,7 +521,7 @@ def test_pbt_u6_11_interromper_cancela_tudo(tmp_path, esperas, quando, ambiente)
     async def cenario():
         montagem = await montar(tmp_path, ambiente, confirmacao, instrumento=ServicoEspiao)
         frente, tarefa = tarefas_de(ambiente)[0]
-        contexto = ContextoDaSessao(ambiente.id, frente.id, tarefa.id, tarefa.chats[0].id)
+        contexto = ContextoDaSessao(ambiente.id, frente.id, tarefa.id, tarefa.sessoes[0].id, tarefa.sessoes[0].chats[0].id)
         registro = RegistroDeFerramentas(entradas_de_acoes(montagem.catalogo))
         sessoes = AdaptadorSessaoClaude(registro, Path.cwd(), fabrica, prazo_de_subida=5, prazo_de_interrupcao=1)
         quem = ORQUESTRADOR.__class__(ORQUESTRADOR.nome, ORQUESTRADOR.papel, "m", ferramentas=tuple(e.nome for e in registro.entradas))

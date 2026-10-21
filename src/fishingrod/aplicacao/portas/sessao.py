@@ -29,12 +29,16 @@ from fishingrod.dominio import Agente, Identidade
 class ContextoDaSessao:
     """De que chat e a sessao (Q8=A). So identidades: o nome que assina o que
     o agente fizer vem do `Agente`, nunca de quem abre (G10). Todo chat mora
-    numa tarefa, entao as quatro sempre existem, inclusive para o
-    bibliotecario."""
+    numa sessao de uma tarefa, entao as cinco sempre existem, inclusive para o
+    bibliotecario.
+
+    `id_sessao` e a sessao do dominio (Sessao, D21), onde o chat mora - e nao
+    esta SessaoViva, que e a conexao aberta com o provedor para um chat."""
 
     id_ambiente: Identidade
     id_frente: Identidade
     id_tarefa: Identidade
+    id_sessao: Identidade
     id_chat: Identidade
 
 

@@ -101,13 +101,14 @@ def test_importar_parser_e_argumentos_nao_carrega_o_servico():
 
 
 def test_criterio_4_conversar_nao_esta_no_catalogo():
-    """RN-AC-04, criterio 4: o registro e exatamente as 6 acoes de ambiente, e
+    """RN-AC-04, criterio 4: o registro e exatamente as 7 acoes de ambiente, e
     nenhuma delas e de conversa."""
     nomes = [acao.nome for acao in ACOES]
 
     assert nomes == [
         "criar_frente",
         "criar_tarefa",
+        "criar_sessao",
         "criar_chat",
         "criar_etapa",
         "concluir_etapa",

@@ -27,6 +27,7 @@ from fishingrod.dominio import (
     Identidade,
     Papel,
     RaizWiki,
+    Sessao,
     Tarefa,
 )
 
@@ -46,7 +47,7 @@ def ambiente_de(documento: dict[str, Any], versao: int) -> Ambiente:
 
     A reconstrucao passa pelos construtores de dominio, entao um documento
     corrompido levanta erro de dominio em vez de virar entidade invalida.
-    Tarefa.memoria fica vazia aqui: quem a preenche e o repositorio, lendo a
+    Sessao.memoria fica vazia aqui: quem a preenche e o repositorio, lendo a
     tabela `anotacao` (RN-P-08, RN-P-11).
     """
     return Ambiente(
@@ -88,7 +89,7 @@ def _tarefa_para_dict(tarefa: Tarefa) -> dict[str, Any]:
     return {
         "id": tarefa.id.valor,
         "nome": tarefa.nome,
-        "chats": [_chat_para_dict(c) for c in tarefa.chats],
+        "sessoes": [_sessao_para_dict(s) for s in tarefa.sessoes],
         "etapas": [_etapa_para_dict(e) for e in tarefa.etapas],
     }
 
@@ -96,8 +97,29 @@ def _tarefa_para_dict(tarefa: Tarefa) -> dict[str, Any]:
 def _tarefa_de_dict(d: dict[str, Any]) -> Tarefa:
     return Tarefa(
         nome=d["nome"],
-        chats=[_chat_de_dict(c) for c in d["chats"]],
+        sessoes=[_sessao_de_dict(s) for s in d["sessoes"]],
         etapas=[_etapa_de_dict(e) for e in d["etapas"]],
+        id=Identidade(d["id"]),
+    )
+
+
+# --------------------------------------------------------------------------
+# Sessao
+# --------------------------------------------------------------------------
+
+
+def _sessao_para_dict(sessao: Sessao) -> dict[str, Any]:
+    return {
+        "id": sessao.id.valor,
+        "nome": sessao.nome,
+        "chats": [_chat_para_dict(c) for c in sessao.chats],
+    }
+
+
+def _sessao_de_dict(d: dict[str, Any]) -> Sessao:
+    return Sessao(
+        nome=d["nome"],
+        chats=[_chat_de_dict(c) for c in d["chats"]],
         id=Identidade(d["id"]),
     )
 

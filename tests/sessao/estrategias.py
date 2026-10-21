@@ -36,7 +36,7 @@ from fishingrod.aplicacao.ferramentas import (
     RespostaDaFerramenta,
 )
 from fishingrod.aplicacao.portas.sessao import ContextoDaSessao, Familia
-from fishingrod.dominio import Agente, Identidade, Papel
+from fishingrod.dominio import Agente, Chamador, Identidade, Papel
 from tests.acoes.estrategias import ESPACOS, palavras
 from tests.ambiente.estrategias import BIBLIOTECARIO, ORQUESTRADOR, executar, ponderado
 from tests.sessao.cliente_roteirizado import (
@@ -67,7 +67,9 @@ __all__ = ["BIBLIOTECARIO", "ORQUESTRADOR", "executar"]
 PRAZO_DE_SUBIDA = 0.5
 PRAZO_DE_INTERRUPCAO = 0.3
 
-NOMES_DAS_ACOES = tuple(acao.nome for acao in ACOES)
+# So as que o agente aciona: criar_sessao e do usuario (D21) e nao vira
+# ferramenta.
+NOMES_DAS_ACOES = tuple(acao.nome for acao in ACOES if Chamador.AGENTE in acao.chamadores)
 NOMES_DE_WIKI = ("listar", "ler", "propor_entidade", "propor_propriedade")
 NOMES_INEXISTENTES = ("apagar_tudo", "criar_projeto", "ler_arquivo")
 
@@ -78,7 +80,7 @@ NOMES_INEXISTENTES = ("apagar_tudo", "criar_projeto", "ler_arquivo")
 
 
 def contexto_novo() -> ContextoDaSessao:
-    return ContextoDaSessao(Identidade.nova(), Identidade.nova(), Identidade.nova(), Identidade.nova())
+    return ContextoDaSessao(*(Identidade.nova() for _ in range(5)))
 
 
 async def _responder_ok(argumentos: Any) -> RespostaDaFerramenta:

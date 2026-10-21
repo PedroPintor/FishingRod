@@ -1,5 +1,6 @@
-"""As cinco operacoes contra uma pasta de verdade, sem duplo (NFR-W-19). A
-quinta, `apagar`, foi acrescentada por U4 (Q6=A) e tem secao propria no fim.
+"""As seis operacoes contra uma pasta de verdade, sem duplo (NFR-W-19). A
+quinta, `apagar`, foi acrescentada por U4 (Q6=A) e tem secao propria no fim; a
+sexta, `ler_index`, pela primeira tela (card 001), logo depois dela.
 
 Nao existe duplo em memoria de PortaWiki: tmp_path ja e uma pasta descartavel
 por teste, e um duplo sem sistema de arquivos nao reproduziria o confinamento -
@@ -77,7 +78,7 @@ def _latin1(texto: str) -> bytes:
 
 
 def test_dp_w_09_as_operacoes_sao_corrotinas(wiki):
-    for operacao in ("listar", "ler", "escrever_proposta", "renderizar_index", "apagar"):
+    for operacao in ("listar", "ler", "ler_index", "escrever_proposta", "renderizar_index", "apagar"):
         assert inspect.iscoroutinefunction(getattr(wiki, operacao)), operacao
 
 
@@ -756,3 +757,27 @@ def test_nfr_w_02_aprovacao_numa_wiki_de_500_paginas(wiki):
 
     assert len(executar(wiki.listar(LOCALIZADOR, "entidade-00"))) == 21
     assert decorrido <= 1.0, f"a aprovacao levou {decorrido * 1000:.0f} ms"
+
+
+# --------------------------------------------------------------------------
+# ler_index (card 001)
+# --------------------------------------------------------------------------
+
+
+def test_ler_index_devolve_o_que_renderizar_index_escreveu(wiki, raiz):
+    executar(wiki.renderizar_index(LOCALIZADOR, NOME))
+
+    texto = executar(wiki.ler_index(LOCALIZADOR))
+
+    assert texto == (raiz / "index.md").read_text(encoding="utf-8")
+    assert NOME in texto
+
+
+def test_ler_index_de_wiki_sem_indice_e_pagina_inexistente(wiki):
+    with pytest.raises(PaginaInexistente):
+        executar(wiki.ler_index(LOCALIZADOR))
+
+
+def test_ler_index_nao_sai_da_raiz(wiki):
+    with pytest.raises(ErroDeWiki):
+        executar(wiki.ler_index("dados:../fora"))

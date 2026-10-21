@@ -287,34 +287,35 @@ class RepositorioSQLite:
         return ambiente
 
     def _preencher_memoria(self, cursor: sqlite3.Cursor, ambiente: Ambiente) -> None:
-        """RN-P-10 e RN-P-11: toda a memoria de todas as tarefas, na ordem em que
+        """RN-P-10 e RN-P-11: toda a memoria de todas as sessoes, na ordem em que
         foi escrita, e Memoria.versao igual ao total carregado.
 
         Uma consulta so para o ambiente inteiro - e por isso que o indice comeca
         em id_ambiente (R-CG-1). Nao existe memoria parcial: um agente que le o
         blackboard leu o blackboard inteiro.
         """
-        tarefas = {
-            tarefa.id.valor: tarefa
+        sessoes = {
+            sessao.id.valor: sessao
             for frente in ambiente.frentes
             for tarefa in frente.tarefas
+            for sessao in tarefa.sessoes
         }
-        if not tarefas:
+        if not sessoes:
             return
 
         linhas = cursor.execute(
-            "SELECT id_tarefa, chave, autor, valor, criada_em FROM anotacao "
+            "SELECT id_sessao, chave, autor, valor, criada_em FROM anotacao "
             "WHERE id_ambiente = ? ORDER BY id",
             (ambiente.id.valor,),
         ).fetchall()
 
-        for id_tarefa, chave, autor, valor, criada_em in linhas:
-            tarefa = tarefas.get(id_tarefa)
-            if tarefa is None:
-                # Anotacao de uma tarefa que saiu do documento. Nao ha para onde
+        for id_sessao, chave, autor, valor, criada_em in linhas:
+            sessao = sessoes.get(id_sessao)
+            if sessao is None:
+                # Anotacao de uma sessao que saiu do documento. Nao ha para onde
                 # devolve-la; a linha continua no banco (RN-P-09, append-only).
                 continue
-            memoria = tarefa.memoria
+            memoria = sessao.memoria
             memoria.anotacoes.setdefault(chave, []).append(
                 Anotacao(autor=autor, valor=valor, criada_em=_data(criada_em))
             )
@@ -358,25 +359,25 @@ class RepositorioSQLite:
     async def anotar(
         self,
         id_ambiente: Identidade,
-        id_tarefa: Identidade,
+        id_sessao: Identidade,
         chave: str,
         anotacao: Anotacao,
     ) -> None:
         await self._escrever(
-            lambda cur: self._anotar_sync(cur, id_ambiente, id_tarefa, chave, anotacao)
+            lambda cur: self._anotar_sync(cur, id_ambiente, id_sessao, chave, anotacao)
         )
 
     def _anotar_sync(
         self,
         cursor: sqlite3.Cursor,
         id_ambiente: Identidade,
-        id_tarefa: Identidade,
+        id_sessao: Identidade,
         chave: str,
         anotacao: Anotacao,
     ) -> None:
         """Um INSERT. Nada e lido, nada e comparado (RN-P-07).
 
-        E por isso que duas anotacoes simultaneas na mesma tarefa vencem as
+        E por isso que duas anotacoes simultaneas na mesma sessao vencem as
         duas. Se a memoria voltasse para dentro do documento, esta regra
         passaria a ser impossivel de cumprir.
 
@@ -387,12 +388,12 @@ class RepositorioSQLite:
         self._exigir_ambiente(cursor, id_ambiente)
         cursor.execute(
             "INSERT INTO anotacao "
-            "(id, id_ambiente, id_tarefa, chave, autor, valor, criada_em) "
+            "(id, id_ambiente, id_sessao, chave, autor, valor, criada_em) "
             "VALUES (?, ?, ?, ?, ?, ?, ?)",
             (
                 _novo_id(),
                 id_ambiente.valor,
-                id_tarefa.valor,
+                id_sessao.valor,
                 chave,
                 anotacao.autor,
                 anotacao.valor,

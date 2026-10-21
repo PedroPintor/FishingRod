@@ -1,8 +1,8 @@
 """U5 - o registro (RN-AC-05..09, R-CG5-3, criterio 2).
 
-As 6 acoes como dado, `listar` e `buscar`, e um CatalogoInvalido para cada
+As 7 acoes como dado, `listar` e `buscar`, e um CatalogoInvalido para cada
 defeito que RN-AC-08 e R-CG5-3 recusam na construcao. Sem propriedade, de
-proposito (business-logic-model.md 7): sao 6 entradas fixas.
+proposito (business-logic-model.md 7): sao 7 entradas fixas.
 """
 
 import dataclasses
@@ -45,7 +45,7 @@ def _texto(nome="p", obrigatorio=True, maximo=10) -> Parametro:
     return Parametro(nome, TEXTO, "", obrigatorio=obrigatorio, maximo=maximo)
 
 
-# --- as 6 acoes (domain-entities.md 2.5) -------------------------------------
+# --- as 7 acoes (domain-entities.md 2.5) -------------------------------------
 
 
 def _forma(acao: Acao) -> tuple:
@@ -60,14 +60,21 @@ def _forma(acao: Acao) -> tuple:
     )
 
 
-def test_rn_ac_05_as_6_acoes_com_escopo_parametros_e_quem_aciona():
+def test_rn_ac_05_as_7_acoes_com_escopo_parametros_e_quem_aciona():
     assert [_forma(acao) for acao in ACOES] == [
         ("criar_frente", "criar-frente", Escopo.AMBIENTE, (("nome", TEXTO, True, (), 200),), OS_DOIS),
         ("criar_tarefa", "criar-tarefa", Escopo.FRENTE, (("nome", TEXTO, True, (), 200),), OS_DOIS),
         (
+            "criar_sessao",
+            "criar-sessao",
+            Escopo.TAREFA,
+            (("nome", TEXTO, False, (), 200),),
+            frozenset({Chamador.USUARIO}),
+        ),
+        (
             "criar_chat",
             "criar-chat",
-            Escopo.TAREFA,
+            Escopo.SESSAO,
             (("agente", TEXTO, True, (), 100), ("nome", TEXTO, False, (), 200)),
             OS_DOIS,
         ),
@@ -85,7 +92,7 @@ def test_rn_ac_05_as_6_acoes_com_escopo_parametros_e_quem_aciona():
         (
             "anotar_memoria",
             "anotar-memoria",
-            Escopo.TAREFA,
+            Escopo.SESSAO,
             (("chave", TEXTO, True, (), 100), ("valor", TEXTO, True, (), 20_000)),
             OS_DOIS,
         ),
@@ -137,11 +144,11 @@ def test_rn_ac_09_listar_por_escopo_na_ordem_do_registro():
     assert [a.nome for a in catalogo.listar(Escopo.AMBIENTE)] == ["criar_frente"]
     assert [a.nome for a in catalogo.listar(Escopo.FRENTE)] == ["criar_tarefa"]
     assert [a.nome for a in catalogo.listar(Escopo.TAREFA)] == [
-        "criar_chat",
+        "criar_sessao",
         "criar_etapa",
         "concluir_etapa",
-        "anotar_memoria",
     ]
+    assert [a.nome for a in catalogo.listar(Escopo.SESSAO)] == ["criar_chat", "anotar_memoria"]
 
 
 def test_rn_ac_09_listar_por_quem_aciona():
@@ -155,16 +162,17 @@ def test_rn_ac_09_listar_por_quem_aciona():
     ]
     assert "so_agente" not in [a.nome for a in catalogo.listar(chamador=Chamador.USUARIO)]
     assert [a.nome for a in catalogo.listar(Escopo.TAREFA, Chamador.AGENTE)] == [
-        "criar_chat",
         "criar_etapa",
         "concluir_etapa",
-        "anotar_memoria",
         "so_agente",
     ]
 
 
-def test_rn_ac_09_q2_b_o_orquestrador_recebe_as_6():
-    assert _catalogo().listar(chamador=Chamador.AGENTE) == ACOES
+def test_rn_ac_09_q2_b_o_orquestrador_recebe_todas_menos_criar_sessao():
+    """D21: abrir sessao e decisao de quem trabalha, nao do agente."""
+    assert _catalogo().listar(chamador=Chamador.AGENTE) == tuple(
+        acao for acao in ACOES if acao.nome != "criar_sessao"
+    )
 
 
 def test_buscar_pelo_nome_da_acao_e_nao_pelo_comando():

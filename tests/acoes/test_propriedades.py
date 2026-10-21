@@ -14,11 +14,12 @@ from fishingrod.aplicacao.catalogo.catalogo import comando_de, nome_de
 from fishingrod.aplicacao.catalogo.parser import ComandoDigitado, ParserDeComando
 from fishingrod.aplicacao.catalogo.registro import ACOES
 from fishingrod.aplicacao.catalogo.tipos import Acionamento, MotivoFalha, Resultado
-from fishingrod.dominio import ExecutorEtapa
+from fishingrod.dominio import Chamador, ExecutorEtapa
 from tests.acoes.estrategias import (
     BIBLIOTECARIO,
     RESPOSTAS_QUE_NAO_CONFIRMAM,
     NOMES_DAS_ACOES,
+    NOMES_DAS_ACOES_DO_AGENTE,
     ORQUESTRADOR,
     REGISTRO,
     acionamentos,
@@ -80,10 +81,12 @@ def _chamada_esperada(acao: str, alvo, valores: dict, tarefa, autor: str) -> tup
             return ("criar_frente", (alvo.id_ambiente, valores["nome"]))
         case "criar_tarefa":
             return ("criar_tarefa", (alvo.id_ambiente, alvo.id_frente, valores["nome"]))
+        case "criar_sessao":
+            return ("criar_sessao", (alvo.id_ambiente, alvo.id_tarefa, valores.get("nome", "")))
         case "criar_chat":
             return (
                 "criar_chat",
-                (alvo.id_ambiente, alvo.id_tarefa, valores["agente"], valores.get("nome", "")),
+                (alvo.id_ambiente, alvo.id_sessao, valores["agente"], valores.get("nome", "")),
             )
         case "criar_etapa":
             return (
@@ -95,7 +98,7 @@ def _chamada_esperada(acao: str, alvo, valores: dict, tarefa, autor: str) -> tup
         case "anotar_memoria":
             return (
                 "anotar_memoria",
-                (alvo.id_ambiente, alvo.id_tarefa, valores["chave"], valores["valor"], autor),
+                (alvo.id_ambiente, alvo.id_sessao, valores["chave"], valores["valor"], autor),
             )
     raise AssertionError(acao)
 
@@ -198,7 +201,9 @@ def test_pbt_u5_03_nunca_levanta(tmp_path, ambiente, dados):
         linha = dados.draw(linhas_de(entrada), label="linha")
         if modo == "valida":
             alvo = alvo_da_tarefa(ambiente, frente, tarefa)
-            acionamento = USUARIO if pela_barra else dados.draw(acionamentos, label="acionamento")
+            # criar_sessao e so do usuario (D21): pelo agente, seria NAO_PERMITIDA.
+            so_usuario = Chamador.AGENTE not in acao.chamadores
+            acionamento = USUARIO if pela_barra or so_usuario else dados.draw(acionamentos, label="acionamento")
             porta = ConfirmacaoFixa(True)
         else:
             alvo = dados.draw(alvos_quaisquer(ambiente), label="alvo")
@@ -239,7 +244,7 @@ def test_pbt_u5_03_nunca_levanta(tmp_path, ambiente, dados):
 # [Endurecido no passo 17] As propriedades "por acao" sao parametrizadas pela
 # acao, e nao sorteadas: sorteando, o Hypothesis favorecia as primeiras do
 # registro, e PBT-U5-04 rodou 100 exemplos sem nenhum anotar_memoria. O total
-# de exemplos continua o do plano (6 x 17 = 102).
+# de exemplos e 7 x 17 = 119.
 @pytest.mark.parametrize("nome_acao", NOMES_DAS_ACOES)
 @settings(max_examples=17)
 @given(ambiente=ambientes_de_partida(), dados=st.data())
@@ -273,11 +278,12 @@ def test_pbt_u5_04_td_11_o_servico_recebe_exatamente_o_que_foi_digitado(
 LEVANTA = "a porta levanta"
 
 
-# Por acao e por resposta: 6 x 9 = 54 combinacoes, 2 exemplos cada (108). As
+# Por acao do agente e por resposta: 6 x 9 = 54 combinacoes, 2 exemplos cada
+# (108) - criar_sessao fica de fora, porque o agente nao chega a pergunta. As
 # respostas que um `if resposta:` deixaria passar - 1, "sim", "True" - nao
 # dependem da sorte.
 @pytest.mark.parametrize("resposta", [*RESPOSTAS_QUE_NAO_CONFIRMAM, LEVANTA], ids=repr)
-@pytest.mark.parametrize("nome_acao", NOMES_DAS_ACOES)
+@pytest.mark.parametrize("nome_acao", NOMES_DAS_ACOES_DO_AGENTE)
 @settings(max_examples=2)
 @given(ambiente=ambientes_de_partida(), dados=st.data())
 def test_pbt_u5_05_falha_fechada(tmp_path, nome_acao, resposta, ambiente, dados):
@@ -351,7 +357,7 @@ def test_pbt_u5_06_sequencia_de_comandos_contra_o_modelo_de_u4(tmp_path, ambient
 # --------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("nome_acao", NOMES_DAS_ACOES)
+@pytest.mark.parametrize("nome_acao", NOMES_DAS_ACOES_DO_AGENTE)
 @settings(max_examples=10)
 @given(ambiente=ambientes_de_partida(), dados=st.data())
 def test_pbt_u5_07_agente_com_sim_e_igual_a_usuario(tmp_path, nome_acao, ambiente, dados):
@@ -475,7 +481,11 @@ def test_pbt_u5_09_concluir_de_novo_e_o_mesmo_que_uma_vez(tmp_path, ambiente, da
 # Por acao e por tipo de violacao que cabe nela: 36 pares, 3 exemplos cada
 # (108). Sorteando, `opcao` - que so existe em criar_etapa - nunca aparecia.
 _PARES_DE_VIOLACAO = sorted(
-    {(nome, tipo) for nome in NOMES_DAS_ACOES for tipo, _ in casos_de_violacao(REGISTRO[nome])}
+    {
+        (nome, tipo)
+        for nome in NOMES_DAS_ACOES_DO_AGENTE
+        for tipo, _ in casos_de_violacao(REGISTRO[nome])
+    }
 )
 
 

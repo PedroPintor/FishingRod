@@ -26,6 +26,7 @@ from fishingrod.aplicacao.servicos.servico_de_ambiente import (
     EtapaInexistente,
     FrenteInexistente,
     ServicoDeAmbiente,
+    SessaoInexistente,
     TarefaInexistente,
     proposta_do_esquema,
 )
@@ -127,7 +128,13 @@ def test_construcao_recusa_nomes_repetidos_na_lista(repo, wiki):
 
 
 def test_g5_os_erros_novos_tem_raiz_propria_fora_do_dominio():
-    for erro in (FrenteInexistente, TarefaInexistente, EtapaInexistente, AgenteDesconhecido):
+    for erro in (
+        FrenteInexistente,
+        TarefaInexistente,
+        SessaoInexistente,
+        EtapaInexistente,
+        AgenteDesconhecido,
+    ):
         assert issubclass(erro, ErroDeServicoDeAmbiente)
         assert not issubclass(erro, ErroDeDominio)
 
@@ -312,6 +319,7 @@ def test_rn_a_04_operacao_abre_o_ambiente_sem_carregar_antes(repo, wiki):
         lambda s, id: s.apagar_ambiente(id),
         lambda s, id: s.criar_frente(id, "f"),
         lambda s, id: s.criar_tarefa(id, Identidade.nova(), "t"),
+        lambda s, id: s.criar_sessao(id, Identidade.nova()),
         lambda s, id: s.criar_chat(id, Identidade.nova(), BIBLIOTECARIO.nome),
         lambda s, id: s.criar_etapa(id, Identidade.nova(), "e", ExecutorEtapa.USUARIO),
         lambda s, id: s.concluir_etapa(id, Identidade.nova()),
@@ -322,6 +330,7 @@ def test_rn_a_04_operacao_abre_o_ambiente_sem_carregar_antes(repo, wiki):
         "apagar",
         "criar_frente",
         "criar_tarefa",
+        "criar_sessao",
         "criar_chat",
         "criar_etapa",
         "concluir_etapa",
@@ -429,8 +438,37 @@ def test_us_15_us_16_frente_e_tarefa_com_o_orquestrador_do_construtor(servico, r
     async def cenario():
         ambiente, frente, tarefa = await _com_tarefa(servico)
 
-        assert [c.agente for c in tarefa.chats] == [ORQUESTRADOR]
+        assert [c.agente for c in tarefa.sessoes[0].chats] == [ORQUESTRADOR]
         assert ambiente.frentes == [frente] and frente.tarefas == [tarefa]
+        assert await _do_disco(repo, wiki, ambiente.id) == ambiente
+
+    executar(cenario())
+
+
+def test_d21_criar_sessao_nasce_com_o_orquestrador_e_vai_para_o_disco(servico, repo, wiki):
+    async def cenario():
+        ambiente, _, tarefa = await _com_tarefa(servico)
+
+        sessao = await servico.criar_sessao(ambiente.id, tarefa.id)
+        nomeada = await servico.criar_sessao(ambiente.id, tarefa.id, "revisão")
+
+        assert tarefa.sessoes == [tarefa.sessoes[0], sessao, nomeada]
+        assert [s.nome for s in tarefa.sessoes] == ["sessão 1", "sessão 2", "revisão"]
+        assert [c.agente for c in sessao.chats] == [ORQUESTRADOR]
+        assert await _do_disco(repo, wiki, ambiente.id) == ambiente
+
+    executar(cenario())
+
+
+def test_d21_memoria_e_por_sessao(servico, repo, wiki):
+    async def cenario():
+        ambiente, _, tarefa = await _com_tarefa(servico)
+        segunda = await servico.criar_sessao(ambiente.id, tarefa.id)
+
+        await servico.anotar_memoria(ambiente.id, segunda.id, "icp", "dentistas", "usuario")
+
+        assert tarefa.sessoes[0].memoria.total_de_anotacoes() == 0
+        assert segunda.memoria.total_de_anotacoes() == 1
         assert await _do_disco(repo, wiki, ambiente.id) == ambiente
 
     executar(cenario())
@@ -440,16 +478,16 @@ def test_rn_a_22_criar_chat_so_com_agente_da_lista_fechada(servico):
     async def cenario():
         ambiente, _, tarefa = await _com_tarefa(servico)
 
-        chat = await servico.criar_chat(ambiente.id, tarefa.id, BIBLIOTECARIO.nome)
+        chat = await servico.criar_chat(ambiente.id, tarefa.sessoes[0].id, BIBLIOTECARIO.nome)
         assert chat.agente is BIBLIOTECARIO
         assert chat.nome == BIBLIOTECARIO.nome  # nome vazio vira o do agente
 
         versao = ambiente.versao
         for nome in (ORQUESTRADOR.nome, "Bibliotecario", "qualquer um"):
             with pytest.raises(AgenteDesconhecido):
-                await servico.criar_chat(ambiente.id, tarefa.id, nome)
+                await servico.criar_chat(ambiente.id, tarefa.sessoes[0].id, nome)
         assert ambiente.versao == versao  # nada gravado
-        assert len(tarefa.chats) == 2
+        assert len(tarefa.sessoes[0].chats) == 2
 
     executar(cenario())
 
@@ -509,11 +547,16 @@ def test_rn_a_08_alvo_inexistente_e_erro_tipado_e_nada_e_gravado(repo, wiki):
         with pytest.raises(FrenteInexistente):
             await servico.criar_tarefa(ambiente.id, fantasma, "t")
         for operacao in (
-            servico.criar_chat(ambiente.id, fantasma, BIBLIOTECARIO.nome),
+            servico.criar_sessao(ambiente.id, fantasma),
             servico.criar_etapa(ambiente.id, fantasma, "e", ExecutorEtapa.AGENTE),
-            servico.anotar_memoria(ambiente.id, fantasma, "k", "v", "autor"),
         ):
             with pytest.raises(TarefaInexistente):
+                await operacao
+        for operacao in (
+            servico.criar_chat(ambiente.id, fantasma, BIBLIOTECARIO.nome),
+            servico.anotar_memoria(ambiente.id, fantasma, "k", "v", "autor"),
+        ):
+            with pytest.raises(SessaoInexistente):
                 await operacao
         with pytest.raises(EtapaInexistente):
             await servico.concluir_etapa(ambiente.id, fantasma)
@@ -551,7 +594,7 @@ def test_rn_a_02_erro_do_dominio_chega_antes_de_gravar(repo, wiki):
         with pytest.raises(NomeInvalido):
             await servico.criar_etapa(ambiente.id, tarefa.id, "", ExecutorEtapa.AGENTE)
         with pytest.raises(NomeInvalido):
-            await servico.anotar_memoria(ambiente.id, tarefa.id, " ", "v", "autor")
+            await servico.anotar_memoria(ambiente.id, tarefa.sessoes[0].id, " ", "v", "autor")
 
         assert diario == []
         assert ambiente.versao == versao
@@ -568,12 +611,13 @@ def test_rn_a_07_uma_gravacao_por_operacao(repo, wiki):
         ambiente = await servico.criar_ambiente("Nexo", EsquemaWiki.vazio())
         frente = await servico.criar_frente(ambiente.id, "f")
         tarefa = await servico.criar_tarefa(ambiente.id, frente.id, "t")
-        await servico.criar_chat(ambiente.id, tarefa.id, BIBLIOTECARIO.nome)
+        await servico.criar_sessao(ambiente.id, tarefa.id)
+        await servico.criar_chat(ambiente.id, tarefa.sessoes[0].id, BIBLIOTECARIO.nome)
         etapa = await servico.criar_etapa(ambiente.id, tarefa.id, "e", ExecutorEtapa.AGENTE)
         await servico.concluir_etapa(ambiente.id, etapa.id)
 
-        assert diario == ["salvar_ambiente"] * 6
-        assert ambiente.versao == 6
+        assert diario == ["salvar_ambiente"] * 7
+        assert ambiente.versao == 7
 
     executar(cenario())
 
@@ -592,12 +636,12 @@ def test_rn_a_25_anotar_nao_grava_o_documento_e_acumula(repo, wiki):
         versao = ambiente.versao
         diario.clear()
 
-        primeira = await servico.anotar_memoria(ambiente.id, tarefa.id, "icp", "dentistas", "orquestrador")
-        segunda = await servico.anotar_memoria(ambiente.id, tarefa.id, "icp", "clínicas", "usuário")
+        primeira = await servico.anotar_memoria(ambiente.id, tarefa.sessoes[0].id, "icp", "dentistas", "orquestrador")
+        segunda = await servico.anotar_memoria(ambiente.id, tarefa.sessoes[0].id, "icp", "clínicas", "usuário")
 
         assert diario == ["anotar", "anotar"]
         assert ambiente.versao == versao
-        assert tarefa.memoria.anotacoes["icp"] == [primeira, segunda]  # US-04: não substitui
+        assert tarefa.sessoes[0].memoria.anotacoes["icp"] == [primeira, segunda]  # US-04: não substitui
         assert await _do_disco(repo, wiki, ambiente.id) == ambiente
 
     executar(cenario())
@@ -655,12 +699,12 @@ def test_rn_a_09_falha_ao_anotar_some_da_memoria(repo, wiki):
         falhar["ligado"] = True
 
         with pytest.raises(FalhaInjetadaNoBanco):
-            await servico.anotar_memoria(ambiente.id, tarefa.id, "icp", "dentistas", "eu")
+            await servico.anotar_memoria(ambiente.id, tarefa.sessoes[0].id, "icp", "dentistas", "eu")
 
         aberto = await servico.carregar_ambiente(ambiente.id)
         assert aberto is ambiente
         assert aberto == await _do_disco(repo, wiki, ambiente.id)
-        assert aberto.frentes[0].tarefas[0].memoria.total_de_anotacoes() == 0
+        assert aberto.frentes[0].tarefas[0].sessoes[0].memoria.total_de_anotacoes() == 0
 
     executar(cenario())
 
@@ -776,7 +820,7 @@ def test_rn_a_12_anotar_em_ambiente_apagado_por_outro_processo(repo, wiki):
         await outro.apagar_ambiente(ambiente.id)
 
         with pytest.raises(AmbienteInexistente):
-            await este.anotar_memoria(ambiente.id, tarefa.id, "k", "v", "autor")
+            await este.anotar_memoria(ambiente.id, tarefa.sessoes[0].id, "k", "v", "autor")
         with pytest.raises(AmbienteInexistente):
             await este.carregar_ambiente(ambiente.id)
 

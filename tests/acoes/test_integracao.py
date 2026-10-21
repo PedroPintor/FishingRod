@@ -44,7 +44,7 @@ def test_us_04_15_16_17_19_de_ponta_a_ponta_e_depois_de_reabrir(tmp_path):
         tarefa = (
             await usar(parser.interpretar("/criar-tarefa campanha de verao"), Alvo(ambiente.id, frente.id))
         ).dado
-        alvo = Alvo(ambiente.id, frente.id, tarefa.id)
+        alvo = Alvo(ambiente.id, frente.id, tarefa.id, tarefa.sessoes[0].id)
 
         # US-17 e US-04, pelo orquestrador, com confirmacao
         orquestrador = Acionamento.agente(ORQUESTRADOR.nome)
@@ -80,7 +80,7 @@ def test_us_04_15_16_17_19_de_ponta_a_ponta_e_depois_de_reabrir(tmp_path):
     ]
     memoria = {
         chave: [(a.autor, a.valor) for a in lista]
-        for chave, lista in tarefa_lida.memoria.anotacoes.items()
+        for chave, lista in tarefa_lida.sessoes[0].memoria.anotacoes.items()
     }
     assert memoria == {
         "icp": [(ORQUESTRADOR.nome, "dentistas, ticket alto")],

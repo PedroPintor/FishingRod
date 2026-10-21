@@ -1,7 +1,7 @@
 # D07 — Começar com uma interface no terminal (Textual)
 
 Status: revisada
-Data do status: 2026-10-20
+Data do status: 2026-10-21
 
 ## O que é
 
@@ -19,6 +19,6 @@ de layout e navegação, não de visual.
 
 ## Onde aparece no código
 
-- `src/fishingrod/interface/` (ainda vazia: a tela não foi construída)
+- `src/fishingrod/interface/` (a primeira tela, do [card 001](../cards/001-primeira-tela.md))
 - `tui.py` na raiz é o protótipo antigo, mantido como referência
-- A Textual ainda não está em `pyproject.toml`: entra quando a primeira tela for construída
+- A Textual está em `pyproject.toml` em versão exata (8.2.8) desde o card 001

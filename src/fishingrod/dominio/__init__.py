@@ -19,6 +19,7 @@ from fishingrod.dominio.identidade import Identidade
 from fishingrod.dominio.memoria import Anotacao, Memoria
 from fishingrod.dominio.politica import Chamador, exige_aprovacao
 from fishingrod.dominio.raiz_wiki import LocalizadorInvalido, RaizWiki
+from fishingrod.dominio.sessao import Sessao
 from fishingrod.dominio.tarefa import Tarefa
 
 __all__ = [
@@ -39,6 +40,7 @@ __all__ = [
     "OrquestradorDuplicado",
     "Papel",
     "RaizWiki",
+    "Sessao",
     "Tarefa",
     "exige_aprovacao",
 ]

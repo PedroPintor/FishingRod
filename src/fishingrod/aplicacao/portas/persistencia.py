@@ -142,7 +142,7 @@ class PortaPersistencia(Protocol):
 
     async def carregar_ambiente(self, id: Identidade) -> Ambiente | None:
         """Reconstitui o ambiente inteiro, com toda a memoria de todas as
-        tarefas (RN-P-11).
+        sessoes (RN-P-11).
 
         Id inexistente devolve None, nao levanta (RN-P-04): ausencia e
         resultado, nao erro.
@@ -166,14 +166,14 @@ class PortaPersistencia(Protocol):
     async def anotar(
         self,
         id_ambiente: Identidade,
-        id_tarefa: Identidade,
+        id_sessao: Identidade,
         chave: str,
         anotacao: Anotacao,
     ) -> None:
         """Acrescenta uma anotacao. Nunca levanta ConflitoDeVersao e nunca altera
         Ambiente.versao (RN-P-07).
 
-        Duas anotacoes concorrentes na mesma tarefa sobrevivem ambas. E o ponto
+        Duas anotacoes concorrentes na mesma sessao sobrevivem ambas. E o ponto
         da decisao de tirar a memoria do documento.
         """
         ...

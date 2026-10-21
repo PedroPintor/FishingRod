@@ -66,15 +66,15 @@ def _anotar_roteiro(ambiente, roteiro):
     tocar anotacao: sem este replay, o round-trip falharia por a regra estar
     sendo cumprida.
     """
-    tarefas = est.tarefas_de(ambiente)
-    if not tarefas:
+    sessoes = est.sessoes_de(ambiente)
+    if not sessoes:
         return []
 
     aplicadas = []
     for indice, (chave, autor, valor) in enumerate(roteiro):
-        tarefa = tarefas[indice % len(tarefas)]
-        anotacao = tarefa.memoria.anotar(chave, valor, autor)
-        aplicadas.append((tarefa, chave, anotacao))
+        sessao = sessoes[indice % len(sessoes)]
+        anotacao = sessao.memoria.anotar(chave, valor, autor)
+        aplicadas.append((sessao, chave, anotacao))
     return aplicadas
 
 
@@ -90,8 +90,8 @@ def test_pbt_u2_01_round_trip_preserva_o_ambiente(repositorio, ambiente, roteiro
 
     async def cenario():
         await repositorio.salvar_ambiente(ambiente)
-        for tarefa, chave, anotacao in _anotar_roteiro(ambiente, roteiro):
-            await repositorio.anotar(ambiente.id, tarefa.id, chave, anotacao)
+        for sessao, chave, anotacao in _anotar_roteiro(ambiente, roteiro):
+            await repositorio.anotar(ambiente.id, sessao.id, chave, anotacao)
 
         carregado = await repositorio.carregar_ambiente(ambiente.id)
         assert carregado == ambiente
@@ -113,19 +113,19 @@ def test_pbt_u2_02_memoria_volta_na_ordem_de_escrita(repositorio, ambiente, rote
 
     async def cenario():
         await repositorio.salvar_ambiente(ambiente)
-        tarefas = est.tarefas_de(ambiente)
-        if not tarefas:
+        sessoes = est.sessoes_de(ambiente)
+        if not sessoes:
             return
 
-        tarefa = tarefas[0]
+        sessao = sessoes[0]
         for chave, autor, valor in roteiro:
-            anotacao = tarefa.memoria.anotar(chave, valor, autor)
-            await repositorio.anotar(ambiente.id, tarefa.id, chave, anotacao)
+            anotacao = sessao.memoria.anotar(chave, valor, autor)
+            await repositorio.anotar(ambiente.id, sessao.id, chave, anotacao)
 
         carregado = await repositorio.carregar_ambiente(ambiente.id)
-        memoria = est.tarefas_de(carregado)[0].memoria
+        memoria = est.sessoes_de(carregado)[0].memoria
 
-        assert memoria.anotacoes == tarefa.memoria.anotacoes
+        assert memoria.anotacoes == sessao.memoria.anotacoes
         assert memoria.versao == len(roteiro)
         assert memoria.versao == memoria.total_de_anotacoes()
 
@@ -139,20 +139,20 @@ def test_pbt_u2_06_anotacoes_concorrentes_sobrevivem_todas(repositorio, ambiente
 
     async def cenario():
         await repositorio.salvar_ambiente(ambiente)
-        tarefas = est.tarefas_de(ambiente)
-        if not tarefas:
+        sessoes = est.sessoes_de(ambiente)
+        if not sessoes:
             return
 
-        tarefa = tarefas[0]
+        sessao = sessoes[0]
         for volta in range(6):
             autor = autores[volta % 2]
             anotacao = est.anotacao_agora(autor, f"nota {volta}")
             # Sem recarregar o ambiente no meio: e exatamente a intercalacao que
             # o bloqueio otimista transformaria em falso conflito.
-            await repositorio.anotar(ambiente.id, tarefa.id, "achados", anotacao)
+            await repositorio.anotar(ambiente.id, sessao.id, "achados", anotacao)
 
         carregado = await repositorio.carregar_ambiente(ambiente.id)
-        memoria = est.tarefas_de(carregado)[0].memoria
+        memoria = est.sessoes_de(carregado)[0].memoria
 
         assert memoria.total_de_anotacoes() == 6
         assert [a.valor for a in memoria.anotacoes["achados"]] == [
@@ -321,8 +321,8 @@ def test_pbt_u2_07_apagar_nao_deixa_orfao(repositorio, ambiente, roteiro):
             ambiente.id, id_chat, "usuario", "oi", False
         )
         await repositorio.registrar_uso_ferramenta(id_mensagem, "ler", "{}")
-        for tarefa, chave, anotacao in _anotar_roteiro(ambiente, roteiro):
-            await repositorio.anotar(ambiente.id, tarefa.id, chave, anotacao)
+        for sessao, chave, anotacao in _anotar_roteiro(ambiente, roteiro):
+            await repositorio.anotar(ambiente.id, sessao.id, chave, anotacao)
 
         await repositorio.apagar_ambiente(ambiente.id)
 
@@ -333,13 +333,13 @@ def test_pbt_u2_07_apagar_nao_deixa_orfao(repositorio, ambiente, roteiro):
         # volta vazia em vez de ressuscitar o que estava la.
         ressuscitado = copy.deepcopy(ambiente)
         ressuscitado.versao = 0
-        for tarefa in est.tarefas_de(ressuscitado):
-            tarefa.memoria.anotacoes = {}
-            tarefa.memoria.versao = 0
+        for sessao in est.sessoes_de(ressuscitado):
+            sessao.memoria.anotacoes = {}
+            sessao.memoria.versao = 0
         await repositorio.salvar_ambiente(ressuscitado)
 
         carregado = await repositorio.carregar_ambiente(ambiente.id)
-        assert all(t.memoria.total_de_anotacoes() == 0 for t in est.tarefas_de(carregado))
+        assert all(t.memoria.total_de_anotacoes() == 0 for t in est.sessoes_de(carregado))
 
     executar(cenario())
 
@@ -407,15 +407,15 @@ async def _rodar_roteiro(repositorio, ambiente, id_chat, operacoes):
                 observado.append(("carregar", await repositorio.carregar_ambiente(ambiente.id)))
 
             elif nome == "anotar":
-                tarefas = est.tarefas_de(ambiente)
-                if not tarefas:
-                    observado.append(("anotar", "sem tarefa"))
+                sessoes = est.sessoes_de(ambiente)
+                if not sessoes:
+                    observado.append(("anotar", "sem sessao"))
                     continue
-                tarefa = tarefas[operacao[1] % len(tarefas)]
+                sessao = sessoes[operacao[1] % len(sessoes)]
                 anotacao = Anotacao(
                     autor="agente", valor=operacao[3], criada_em=_INSTANTE_DO_ROTEIRO
                 )
-                await repositorio.anotar(ambiente.id, tarefa.id, operacao[2], anotacao)
+                await repositorio.anotar(ambiente.id, sessao.id, operacao[2], anotacao)
                 observado.append(("anotar", None))
 
             elif nome == "inserir":

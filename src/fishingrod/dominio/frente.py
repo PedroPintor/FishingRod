@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 
 from fishingrod.dominio.agente import Agente
-from fishingrod.dominio.erros import AgenteInvalido, exigir_texto
+from fishingrod.dominio.erros import exigir_texto
 from fishingrod.dominio.identidade import Identidade
 from fishingrod.dominio.tarefa import Tarefa
 
@@ -20,21 +20,17 @@ class Frente:
         exigir_texto(self.nome, "nome da frente")
 
     def criar_tarefa(self, nome: str, agente_orquestrador: Agente) -> Tarefa:
-        """Cria a tarefa ja com um chat do orquestrador (RN-05).
+        """Cria a tarefa ja com a primeira sessao, e nela o chat do
+        orquestrador (RN-05, D21).
 
         O agente vem por parametro (Q4=A) porque o dominio nao pode conhecer a
         instancia concreta do orquestrador - ela e configuracao montada no
-        composition root (U9). Isto corrige a assinatura de
-        component-methods.md 1.3, que escrevia criar_tarefa(nome) e falava em
-        "orquestrador padrao".
+        composition root. A tarefa so entra na frente depois que a sessao
+        nasceu: um agente que nao e orquestrador e recusado sem deixar tarefa
+        pela metade.
         """
-        if not agente_orquestrador.e_orquestrador:
-            raise AgenteInvalido(
-                "a tarefa nasce com um chat de agente orquestrador; "
-                f"[{agente_orquestrador.nome}] tem papel {agente_orquestrador.papel.value}"
-            )
         tarefa = Tarefa(nome=nome)
-        tarefa.criar_chat(agente_orquestrador)
+        tarefa.criar_sessao(agente_orquestrador)
         self.tarefas.append(tarefa)
         return tarefa
 

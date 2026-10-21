@@ -117,9 +117,9 @@ class PersistenciaEspia(_Espia):
     async def apagar_ambiente(self, id):
         return await self._chamar("apagar_ambiente", self.interna.apagar_ambiente, id)
 
-    async def anotar(self, id_ambiente, id_tarefa, chave, anotacao):
+    async def anotar(self, id_ambiente, id_sessao, chave, anotacao):
         return await self._chamar(
-            "anotar", self.interna.anotar, id_ambiente, id_tarefa, chave, anotacao
+            "anotar", self.interna.anotar, id_ambiente, id_sessao, chave, anotacao
         )
 
 

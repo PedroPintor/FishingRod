@@ -18,6 +18,7 @@ from fishingrod.dominio import (
     Anotacao,
     ExecutorEtapa,
     Papel,
+    Sessao,
     Tarefa,
 )
 
@@ -53,7 +54,8 @@ def agentes(draw: Any, orquestrador: bool = True) -> Agente:
 
 @st.composite
 def ambientes(draw: Any) -> Ambiente:
-    """Frentes, tarefas, chats e etapas arbitrarios - tudo pela API publica.
+    """Frentes, tarefas, sessoes, chats e etapas arbitrarios - tudo pela API
+    publica.
 
     Memoria fica vazia aqui de proposito: quem a preenche e `anotar`, no teste,
     para que dominio e disco andem juntos (RN-P-08).
@@ -69,9 +71,15 @@ def ambientes(draw: Any) -> Ambiente:
             )
 
             for _ in range(draw(st.integers(min_value=0, max_value=2))):
-                tarefa.criar_chat(
-                    draw(agentes(orquestrador=False)), nome=draw(texto_nao_vazio)
+                tarefa.criar_sessao(
+                    draw(agentes(orquestrador=True)), nome=draw(texto_nao_vazio)
                 )
+
+            for sessao in tarefa.sessoes:
+                for _ in range(draw(st.integers(min_value=0, max_value=2))):
+                    sessao.criar_chat(
+                        draw(agentes(orquestrador=False)), nome=draw(texto_nao_vazio)
+                    )
 
             for _ in range(draw(st.integers(min_value=0, max_value=3))):
                 etapa = tarefa.criar_etapa(
@@ -88,9 +96,13 @@ def tarefas_de(ambiente: Ambiente) -> list[Tarefa]:
     return [tarefa for frente in ambiente.frentes for tarefa in frente.tarefas]
 
 
+def sessoes_de(ambiente: Ambiente) -> list[Sessao]:
+    return [sessao for tarefa in tarefas_de(ambiente) for sessao in tarefa.sessoes]
+
+
 @st.composite
 def roteiros_de_anotacao(draw: Any, quantidade: int = 8) -> list[tuple[str, str, str]]:
-    """(chave, autor, valor) - a tarefa e escolhida no teste, que conhece o
+    """(chave, autor, valor) - a sessao e escolhida no teste, que conhece o
     ambiente gerado."""
     return draw(
         st.lists(

@@ -25,9 +25,13 @@ def _ambiente_completo() -> Ambiente:
             regras=("nunca apagar anotacao",),
         ),
     )
-    tarefa.criar_chat(
+    tarefa.sessoes[0].criar_chat(
         Agente(nome="bibliotecario", papel=Papel.SUB_AGENTE, modelo="claude-sonnet-5"),
         nome="wiki",
+    )
+    tarefa.criar_sessao(
+        Agente(nome="orquestrador", papel=Papel.ORQUESTRADOR, modelo="claude-opus-5"),
+        nome="revisao",
     )
     tarefa.criar_etapa("levantar lista", ExecutorEtapa.AGENTE).concluir()
     tarefa.criar_etapa("revisar", ExecutorEtapa.USUARIO)

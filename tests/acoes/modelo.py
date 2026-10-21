@@ -32,12 +32,18 @@ def forma(ambiente: Ambiente, autor: Callable[[str], str] = lambda autor: autor)
                 tuple(
                     (
                         tarefa.nome,
-                        tuple((chat.agente.nome, chat.nome) for chat in tarefa.chats),
-                        tuple((e.descricao, e.executor, e.concluida) for e in tarefa.etapas),
                         tuple(
-                            (chave, tuple((autor(a.autor), a.valor) for a in lista))
-                            for chave, lista in tarefa.memoria.anotacoes.items()
+                            (
+                                sessao.nome,
+                                tuple((chat.agente.nome, chat.nome) for chat in sessao.chats),
+                                tuple(
+                                    (chave, tuple((autor(a.autor), a.valor) for a in lista))
+                                    for chave, lista in sessao.memoria.anotacoes.items()
+                                ),
+                            )
+                            for sessao in tarefa.sessoes
                         ),
+                        tuple((e.descricao, e.executor, e.concluida) for e in tarefa.etapas),
                     )
                     for tarefa in frente.tarefas
                 ),
@@ -56,7 +62,7 @@ Previsao = tuple[MotivoFalha | None, dict[str, str]]
 
 def prever(passo: Passo, modelo: ModeloDeAmbientes) -> Previsao:
     """O motivo e o detalhe esperados, na ordem de RN-AC-38. O passo 2 (quem
-    aciona) nao aparece: o usuario pode as 6."""
+    aciona) nao aparece: o usuario pode as 7."""
     acao = REGISTRO.get(passo.acao) if passo.acao else None
     if acao is None:
         return MotivoFalha.ACAO_DESCONHECIDA, {"acao": passo.como_chegou}
@@ -66,6 +72,8 @@ def prever(passo: Passo, modelo: ModeloDeAmbientes) -> Previsao:
         return MotivoFalha.ALVO_AUSENTE, {"falta": "frente"}
     if acao.escopo is Escopo.TAREFA and alvo.id_tarefa is None:
         return MotivoFalha.ALVO_AUSENTE, {"falta": "tarefa"}
+    if acao.escopo is Escopo.SESSAO and alvo.id_sessao is None:
+        return MotivoFalha.ALVO_AUSENTE, {"falta": "sessao"}
 
     if passo.violacao is not None:
         return MotivoFalha.ARGUMENTO_INVALIDO, dict(passo.violacao)
@@ -75,6 +83,8 @@ def prever(passo: Passo, modelo: ModeloDeAmbientes) -> Previsao:
         return MotivoFalha.ALVO_INEXISTENTE, {"alvo": "ambiente"}
     if acao.escopo is Escopo.FRENTE and ModeloDeAmbientes._frente(vista, alvo.id_frente) is None:
         return MotivoFalha.ALVO_INEXISTENTE, {"alvo": "frente"}
+    if acao.escopo is Escopo.SESSAO and ModeloDeAmbientes._sessao(vista, alvo.id_sessao) is None:
+        return MotivoFalha.ALVO_INEXISTENTE, {"alvo": "sessao"}
     if acao.escopo is Escopo.TAREFA:
         tarefa = ModeloDeAmbientes._tarefa(vista, alvo.id_tarefa)
         if tarefa is None:
@@ -107,11 +117,13 @@ def chamada_de_u4(passo: Passo, modelo: ModeloDeAmbientes, autor: str) -> Chamad
             return Chamada("criar_frente", alvo.id_ambiente, None, (valores["nome"],))
         case "criar_tarefa":
             return Chamada("criar_tarefa", alvo.id_ambiente, alvo.id_frente, (valores["nome"],))
+        case "criar_sessao":
+            return Chamada("criar_sessao", alvo.id_ambiente, alvo.id_tarefa, (valores.get("nome", ""),))
         case "criar_chat":
             return Chamada(
                 "criar_chat",
                 alvo.id_ambiente,
-                alvo.id_tarefa,
+                alvo.id_sessao,
                 (valores["agente"], valores.get("nome", "")),
             )
         case "criar_etapa":
@@ -130,7 +142,7 @@ def chamada_de_u4(passo: Passo, modelo: ModeloDeAmbientes, autor: str) -> Chamad
             return Chamada(
                 "anotar_memoria",
                 alvo.id_ambiente,
-                alvo.id_tarefa,
+                alvo.id_sessao,
                 (valores["chave"], valores["valor"], autor),
             )
     raise AssertionError(f"acao sem ponte: {passo.acao}")
