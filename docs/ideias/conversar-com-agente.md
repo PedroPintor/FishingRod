@@ -1,6 +1,6 @@
 # Conversar com um agente de verdade dentro de uma tarefa
 
-Estado: ideia
+Estado: virou o [card 002](../cards/002-conversar-com-o-agente.md)
 De onde veio: história de usuário US-01, escrita na fase do AI-DLC (os documentos daquela fase estão na tag `aidlc-congelado`).
 
 Dentro de uma tarefa, escrevo uma mensagem para um agente e recebo a resposta de uma IA de

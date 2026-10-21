@@ -1,6 +1,6 @@
 # Uma falha do Claude não derruba o programa
 
-Estado: ideia
+Estado: virou o [card 002](../cards/002-conversar-com-o-agente.md)
 De onde veio: história de usuário US-03, escrita na fase do AI-DLC (tag `aidlc-congelado`).
 
 Se o Claude cair, ficar fora do ar ou eu bater no limite da assinatura, vejo um aviso claro no

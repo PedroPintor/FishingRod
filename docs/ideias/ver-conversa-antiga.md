@@ -1,6 +1,6 @@
 # Ver a conversa antiga depois de reabrir
 
-Estado: ideia
+Estado: virou o [card 002](../cards/002-conversar-com-o-agente.md)
 De onde veio: história de usuário US-06, escrita na fase do AI-DLC (tag `aidlc-congelado`).
 
 Fecho o programa, volto dias depois, abro um chat antigo e vejo tudo o que foi dito ali. Cada

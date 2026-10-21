@@ -1,6 +1,6 @@
 # O agente lembra da conversa antiga
 
-Estado: ideia
+Estado: virou o [card 002](../cards/002-conversar-com-o-agente.md)
 De onde veio: história de usuário US-07, escrita na fase do AI-DLC (tag `aidlc-congelado`).
 
 Além de eu ver o texto da conversa antiga, o agente também lembra dela: quando volto a um chat
