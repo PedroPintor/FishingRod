@@ -1,6 +1,7 @@
 """A tela do ambiente: onde a pessoa trabalha.
 
-A esquerda, so a arvore de frentes e tarefas. A direita, a area de trabalho:
+A esquerda, so a arvore de frentes e tarefas, e no pe dela o "⚙ ambiente",
+que abre a janela do ambiente. A direita, a area de trabalho:
 uma aba para cada tarefa aberta; dentro da aba da tarefa, a escolha da
 sessao, uma aba para cada chat dela (D21) e o painel de explicacao, com a
 ficha do agente, a memoria e a wiki (card 003).
@@ -30,6 +31,7 @@ from fishingrod.dominio import Ambiente, Frente, Identidade, Sessao, Tarefa
 from fishingrod.interface.chat import ChatAberto
 from fishingrod.interface.explicacao import EstadoDaExplicacao, PainelDeExplicacao
 from fishingrod.interface.frases import frase_da_falha, frase_das_conexoes
+from fishingrod.interface.janela_do_ambiente import JanelaDoAmbiente
 from fishingrod.interface.janelas import JanelaDeAgente, JanelaDeNome
 from fishingrod.interface.montagem import Programa
 
@@ -80,11 +82,10 @@ class PainelDaTarefa(Vertical):
 
     DEFAULT_CSS = """
     PainelDaTarefa .barra { height: auto; margin-bottom: 1; }
-    PainelDaTarefa .barra Select { width: 22; }
+    PainelDaTarefa .barra Select { width: 18; }
     PainelDaTarefa .barra Tabs { width: 1fr; margin-left: 1; }
     PainelDaTarefa .barra Button { margin-left: 1; }
     PainelDaTarefa #conversas { width: 1fr; height: 1fr; }
-    PainelDaTarefa #explicar.-ligado { background: $accent; }
     """
 
     def __init__(self, programa: Programa, ambiente: Ambiente, id_tarefa: Identidade) -> None:
@@ -120,8 +121,9 @@ class PainelDaTarefa(Vertical):
                 value=self.id_sessao.valor if self.id_sessao else Select.NULL,
                 allow_blank=False,
                 id="sessao",
+                compact=True,
             )
-            yield Button("+ sessão", id="nova-sessao")
+            yield Button("+ sessão", id="nova-sessao", compact=True)
             if ativo is None:
                 return
             yield Tabs(
@@ -129,12 +131,13 @@ class PainelDaTarefa(Vertical):
                 active=id_da_aba("chat", ativo.id.valor),
                 id="abas-de-chat",
             )
-            yield Button("+ chat", id="novo-chat")
+            yield Button("+ chat", id="novo-chat", compact=True)
             explicar = Button(
                 "explicar",
                 id="explicar",
                 classes="-ligado" if self.explicacao.aberto else "",
                 tooltip="Mostra a ficha do agente, a memória da sessão e a wiki, ao lado do chat",
+                compact=True,
             )
             # Clicar nao leva o foco: o cursor continua no campo de digitacao.
             explicar.can_focus = False
@@ -237,10 +240,12 @@ class PainelDaTarefa(Vertical):
 
 class TelaDoAmbiente(Screen):
     DEFAULT_CSS = """
-    TelaDoAmbiente #topo { height: 3; padding: 0 1; border-bottom: solid $panel; }
-    TelaDoAmbiente #nome-do-ambiente { width: 1fr; padding-top: 1; text-style: bold; }
-    TelaDoAmbiente #conexoes { padding: 1 2 0 0; color: $text-muted; }
+    TelaDoAmbiente #topo { height: 2; padding: 0 1; border-bottom: solid $panel; }
+    TelaDoAmbiente #nome-do-ambiente { width: 1fr; text-style: bold; }
+    TelaDoAmbiente #conexoes { padding: 0 2 0 0; color: $text-muted; }
     TelaDoAmbiente #lateral { width: 36; border-right: solid $panel; padding: 0 1; }
+    TelaDoAmbiente #frentes-e-tarefas { height: 1fr; }
+    TelaDoAmbiente #configuracoes { width: 100%; margin: 1 0; }
     TelaDoAmbiente .titulo-lateral { color: $text-muted; text-style: bold; margin-top: 1; }
     TelaDoAmbiente #arvore { height: auto; max-height: 20; }
     TelaDoAmbiente #sem-frentes { width: 100%; color: $text-muted; }
@@ -265,17 +270,19 @@ class TelaDoAmbiente(Screen):
         with Horizontal(id="topo"):
             yield Label(self.ambiente.nome, id="nome-do-ambiente", markup=False)
             yield Label(frase_das_conexoes(0), id="conexoes")
-            yield Button("← ambientes", id="voltar")
+            yield Button("← ambientes", id="voltar", compact=True)
         with Horizontal():
-            with VerticalScroll(id="lateral"):
-                yield Label("FRENTES E TAREFAS", classes="titulo-lateral")
-                yield Label(SEM_FRENTES, id="sem-frentes")
-                arvore: Tree = Tree("frentes", id="arvore")
-                arvore.show_root = False
-                yield arvore
-                with Horizontal(id="botoes-da-arvore"):
-                    yield Button("+ frente", id="nova-frente")
-                    yield Button("+ tarefa", id="nova-tarefa")
+            with Vertical(id="lateral"):
+                with VerticalScroll(id="frentes-e-tarefas"):
+                    yield Label("FRENTES E TAREFAS", classes="titulo-lateral")
+                    yield Label(SEM_FRENTES, id="sem-frentes")
+                    arvore: Tree = Tree("frentes", id="arvore")
+                    arvore.show_root = False
+                    yield arvore
+                    with Horizontal(id="botoes-da-arvore"):
+                        yield Button("+ frente", id="nova-frente", compact=True)
+                        yield Button("+ tarefa", id="nova-tarefa", compact=True)
+                yield Button("⚙ ambiente", id="configuracoes", compact=True)
             with Vertical(id="trabalho"):
                 yield Label(NADA_ABERTO, id="nada-aberto")
                 yield TabbedContent(id="abertas")
@@ -373,6 +380,12 @@ class TelaDoAmbiente(Screen):
                 await self.abrir_tarefa(resultado.dado.id)
 
         self.app.push_screen(JanelaDeNome(f"Nome da nova tarefa em {frente.nome}"), depois)
+
+    # --- a janela do ambiente ---------------------------------------------
+
+    @on(Button.Pressed, "#configuracoes")
+    def abrir_configuracoes(self) -> None:
+        self.app.push_screen(JanelaDoAmbiente(self.programa, self.ambiente))
 
     # --- as abas -------------------------------------------------------------
 

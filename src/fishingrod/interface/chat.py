@@ -59,7 +59,7 @@ class ChatAberto(Vertical):
         with Horizontal(classes="faixa"):
             yield Label(frase_do_estado(EstadoDoChat.PRONTO, 0), id="estado")
             yield Button("desligar", id="desligar", compact=True, variant="warning")
-        yield Input(placeholder=DICA_DO_CAMPO, id="campo")
+        yield Input(placeholder=DICA_DO_CAMPO, id="campo", compact=True)
 
     async def on_mount(self) -> None:
         await self.conversa.abrir(self.contexto, self.agente)

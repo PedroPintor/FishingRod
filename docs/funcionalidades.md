@@ -26,10 +26,14 @@ Veio do [card 003](cards/003-interface-em-areas-e-ficha-do-agente.md).
     raciocínio, ferramentas, ferramentas da máquina e instruções —, tirada do que está
     configurado de verdade. Trocar de chat troca a ficha. Só para ler.
   - **memória:** o que os agentes da sessão anotaram uns para os outros, atualizado sozinho.
-  - **wiki:** a árvore da wiki do ambiente; clicar no `index` ou numa página mostra o conteúdo ali
-    mesmo.
+  - **wiki:** a lista da wiki do ambiente; clicar no `index` ou numa página mostra o conteúdo ali
+    mesmo, com **← voltar** para a lista.
 - Cada tarefa tem o seu painel. Abrir, fechar ou trocar de aba nele não interrompe a resposta de
   nenhum agente e não tira o cursor do campo de digitação.
+- No pé da lateral, o botão **⚙ ambiente** abre a janela do ambiente: em "início", o nome e as
+  frentes, com quantas tarefas cada uma tem; em "agentes", os agentes do ambiente e a ficha de cada
+  um.
+- Botões e campos compactos, de uma linha, com fundo de cor.
 
 ### Conversar com o agente
 

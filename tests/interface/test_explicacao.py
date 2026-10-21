@@ -8,15 +8,16 @@ card 002, para nao gastar a assinatura.
 import asyncio
 
 from claude_agent_sdk import TextBlock
-from textual.widgets import Input, Label, Markdown, Static, TabbedContent, Tree
+from textual.css.query import NoMatches
+from textual.widgets import Input, Label, Markdown, Static, TabbedContent, Tabs, Tree
 
 from fishingrod.adaptadores.sessao.opcoes import montar_opcoes
 from fishingrod.aplicacao.portas.wiki import PaginaProposta, PropostaWiki
 from fishingrod.aplicacao.servicos.servico_de_conversa import EstadoDoChat
 from fishingrod.dominio import Agente, Papel
 from fishingrod.interface.app import FishingRodApp
-from fishingrod.interface.explicacao import FICHA, MEMORIA, WIKI, PainelDeExplicacao
-from fishingrod.interface.ficha import ESFORCO_PADRAO, NENHUMA, SEM_INSTRUCOES, OpcoesDoClaude, montar_ficha
+from fishingrod.interface.explicacao import FICHA, LISTA_DA_WIKI, MEMORIA, PAGINA_DA_WIKI, WIKI, PainelDeExplicacao
+from fishingrod.interface.ficha import ESFORCO_PADRAO, FichaNaTela, NENHUMA, SEM_INSTRUCOES, OpcoesDoClaude, montar_ficha
 from fishingrod.interface.frases import MEMORIA_VAZIA
 from fishingrod.interface.montagem import BIBLIOTECARIO, ORQUESTRADOR, montar, opcoes_do_claude
 from fishingrod.interface.tela_do_ambiente import PainelDaTarefa
@@ -80,6 +81,14 @@ def ficha_na_tela(painel: PainelDaTarefa) -> dict[str, str]:
     na_tela["instrucoes"] = texto("#ficha-instrucoes", Static)
     na_tela["do software"] = painel_de_explicacao.query_one("#ficha-marca", Label).display
     return na_tela
+
+
+def nome_na_ficha(app) -> str | None:
+    """O nome na ficha do painel da tarefa aberta, ou None enquanto ele monta."""
+    try:
+        return explicacao(painel_aberto(app)).query_one(FichaNaTela).ficha.nome
+    except (NoMatches, AttributeError, ValueError):
+        return None
 
 
 def memoria_na_tela(painel: PainelDaTarefa) -> str:
@@ -288,11 +297,16 @@ def test_a_ficha_segue_o_chat_ativo(tmp_path):
         await pilot.click("#novo-chat")
         await pilot.pause()
         await pilot.click("#agente-0")
+        # O chat novo redesenha a tarefa fora de um worker: espera o painel novo
+        # mostrar a ficha antes de clicar de novo.
+        await ate(lambda: nome_na_ficha(app) == "bibliotecario")
         await esperar(app, pilot)
         painel = painel_aberto(app)
         do_bibliotecario = (chat_ativo(painel), ficha_na_tela(painel), explicacao(painel).display)
         id_do_orquestrador = painel.tarefa.sessoes[0].chats[0].id.valor
-        await pilot.click(f"#chat-{id_do_orquestrador}")
+        # Ativar a aba e o que o clique faz; clicar logo depois do redesenho
+        # da tarefa as vezes se perde no piloto de testes.
+        painel.query_one("#abas-de-chat", Tabs).active = f"chat-{id_do_orquestrador}"
         await esperar(app, pilot)
         return do_bibliotecario, abas_de_chat(painel), ficha_na_tela(painel)["nome"]
 
@@ -360,3 +374,59 @@ def test_mexer_no_painel_nao_interrompe_a_conversa_nem_tira_o_foco(tmp_path):
 
 async def digitar_sem_mandar(pilot, texto: str) -> None:
     await pilot.press(*texto)
+
+
+async def clicar_na_wiki(app, pilot, painel: PainelDaTarefa, rotulo: str) -> None:
+    """Clica no no da arvore da wiki, como a pessoa faz."""
+    arvore = explicacao(painel).query_one("#wiki", Tree)
+    no = next(n for n in arvore.root.children if str(n.label) == rotulo)
+    await pilot.click(arvore, offset=(4, no.line))
+    await esperar(app, pilot)
+
+
+def tela_da_wiki(painel: PainelDaTarefa) -> str:
+    return explicacao(painel).query_one("#telas-da-wiki").current
+
+
+def test_depois_de_abrir_o_index_as_outras_abas_ainda_abrem(tmp_path):
+    """O retorno do Pedro: abrir o index prendia o painel na aba "wiki" -
+    clicar em "memória" ou "ficha" voltava para ela."""
+
+    async def roteiro(app, pilot):
+        painel = await abrir_tarefa(app, pilot)
+        campo = chat_visivel(app).query_one("#campo", Input)
+        campo.focus()
+        await explicar(app, pilot, painel)
+        await ir_para_a_aba(app, pilot, painel, WIKI)
+        await clicar_na_wiki(app, pilot, painel, "index")
+        com_o_index = (tela_da_wiki(painel), "Nexo" in explicacao(painel).query_one("#texto-da-pagina", Markdown).source)
+        abas = []
+        for aba in (MEMORIA, FICHA, WIKI):
+            await ir_para_a_aba(app, pilot, painel, aba)
+            await pilot.pause(0.3)
+            abas.append(aba_da_explicacao(painel))
+        return com_o_index, abas, app.focused is campo
+
+    com_o_index, abas, foco_no_campo = rodar(tmp_path, roteiro)
+
+    assert com_o_index == (PAGINA_DA_WIKI, True)
+    assert abas == [MEMORIA, FICHA, WIKI]
+    assert foco_no_campo  # nada no painel pegou o foco
+
+
+def test_voltar_na_wiki_mostra_a_lista_de_novo(tmp_path):
+    async def roteiro(app, pilot):
+        painel = await abrir_tarefa(app, pilot)
+        await explicar(app, pilot, painel)
+        await ir_para_a_aba(app, pilot, painel, WIKI)
+        no_comeco = tela_da_wiki(painel)
+        await clicar_na_wiki(app, pilot, painel, "index")
+        aberta = tela_da_wiki(painel)
+        await pilot.click(explicacao(painel).query_one("#voltar-a-lista"))
+        await esperar(app, pilot)
+        return no_comeco, aberta, tela_da_wiki(painel), painel.explicacao.pagina
+
+    no_comeco, aberta, depois, lembrada = rodar(tmp_path, roteiro)
+
+    assert (no_comeco, aberta, depois) == (LISTA_DA_WIKI, PAGINA_DA_WIKI, LISTA_DA_WIKI)
+    assert lembrada is None  # redesenhar a tarefa nao reabre a pagina

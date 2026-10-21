@@ -2,11 +2,14 @@
 
 Mora dentro de cada tarefa, a direita do chat, porque tudo o que explica e de
 um chat ou de uma sessao. Tem tres abas: a ficha do agente do chat que esta na
-frente, a memoria da sessao (D17) e a wiki do ambiente, com a pagina aberta
-ali mesmo.
+frente, a memoria da sessao (D17) e a wiki do ambiente - a lista das paginas
+ou uma pagina aberta, com o "voltar" para a lista.
 
-Mexer no painel nao tira o foco do campo de digitacao: o botao "explicar" e as
-abas do painel nao recebem foco no clique. E nada aqui toca na conversa - a
+Nada no painel recebe foco: nem o botao "explicar", nem as abas, nem a
+arvore, nem os quadros de texto. O cursor fica no campo de digitacao do chat.
+E isso tambem evita uma armadilha da Textual: uma aba com algo focado dentro
+volta a ser a aba ativa, e prendia a pessoa na aba "wiki". Rolar com a roda
+do mouse e clicar continuam funcionando. E nada aqui toca na conversa - a
 resposta de um agente segue no servico de conversa.
 """
 
@@ -14,12 +17,13 @@ from dataclasses import dataclass
 
 from textual import on
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical, VerticalScroll
-from textual.widgets import Label, Markdown, Static, TabbedContent, TabPane, Tabs, Tree
+from textual.containers import Vertical, VerticalScroll
+from textual.widget import Widget
+from textual.widgets import Button, ContentSwitcher, Label, Markdown, TabbedContent, TabPane, Tree
 
 from fishingrod.aplicacao.portas.wiki import ErroDeWiki
 from fishingrod.dominio import Agente, Ambiente, Sessao
-from fishingrod.interface.ficha import Ficha, lista
+from fishingrod.interface.ficha import FichaNaTela
 from fishingrod.interface.frases import texto_da_memoria
 from fishingrod.interface.montagem import Programa
 
@@ -27,7 +31,8 @@ FICHA = "aba-ficha"
 MEMORIA = "aba-memoria"
 WIKI = "aba-wiki"
 
-ESCOLHA_UMA_PAGINA = "Escolha o index ou uma página na árvore para lê-la aqui."
+LISTA_DA_WIKI = "wiki-lista"
+PAGINA_DA_WIKI = "wiki-pagina"
 
 
 @dataclass
@@ -40,30 +45,21 @@ class EstadoDaExplicacao:
     pagina: tuple | None = None  # o `data` do no da wiki: ("index",) ou ("pagina", caminho)
 
 
+def sem_foco(raiz: Widget) -> None:
+    """Tira o foco de `raiz` e de tudo dentro dela. O Markdown monta os seus
+    blocos de novo a cada pagina, por isso e chamada outra vez depois."""
+    for widget in (raiz, *raiz.query("*")):
+        widget.can_focus = False
+
+
 class PainelDeExplicacao(Vertical):
     DEFAULT_CSS = """
     PainelDeExplicacao { width: 52; border-left: solid $panel; padding: 0 0 0 1; }
     PainelDeExplicacao TabbedContent { height: 1fr; }
     PainelDeExplicacao TabPane { padding: 0; }
     PainelDeExplicacao .titulo { text-style: bold; color: $text-muted; margin-top: 1; }
-    PainelDeExplicacao #ficha-topo { height: 1; margin-top: 1; }
-    PainelDeExplicacao #ficha-nome { width: 1fr; text-style: bold; }
-    PainelDeExplicacao #ficha-marca { color: $text-muted; }
-    PainelDeExplicacao .campo { height: auto; }
-    PainelDeExplicacao .campo .rotulo { width: 24; color: $text-muted; }
-    PainelDeExplicacao .campo .valor { width: 1fr; }
-    PainelDeExplicacao #ficha-instrucoes { margin-left: 2; }
-    PainelDeExplicacao #wiki { height: auto; max-height: 12; }
-    PainelDeExplicacao #pagina { height: 1fr; border-top: solid $panel; }
+    PainelDeExplicacao #wiki-pagina #voltar-a-lista { margin-top: 1; }
     """
-
-    CAMPOS = (
-        ("papel", "Papel"),
-        ("modelo", "Modelo"),
-        ("esforco", "Esforço de raciocínio"),
-        ("ferramentas", "Ferramentas"),
-        ("ferramentas-da-maquina", "Ferramentas da máquina"),
-    )
 
     def __init__(
         self, programa: Programa, ambiente: Ambiente, estado: EstadoDaExplicacao, agente: Agente, sessao: Sessao, **kwargs
@@ -81,35 +77,28 @@ class PainelDeExplicacao(Vertical):
         with TabbedContent(initial=self.estado.aba):
             with TabPane("ficha", id=FICHA):
                 with VerticalScroll():
-                    with Horizontal(id="ficha-topo"):
-                        yield Label("", id="ficha-nome", markup=False)
-                        yield Label("do software", id="ficha-marca")
-                    yield Label("CONFIGURAÇÃO", classes="titulo")
-                    for chave, rotulo in self.CAMPOS:
-                        with Horizontal(classes="campo"):
-                            yield Label(rotulo, classes="rotulo")
-                            yield Label("", id=f"ficha-{chave}", classes="valor", markup=False)
-                    yield Label("INSTRUÇÕES", classes="titulo")
-                    yield Static("", id="ficha-instrucoes", markup=False)
+                    yield FichaNaTela()
             with TabPane("memória", id=MEMORIA):
                 with VerticalScroll():
                     yield Label("", id="titulo-da-memoria", classes="titulo", markup=False)
                     yield Markdown("", id="memoria")
             with TabPane("wiki", id=WIKI):
-                wiki: Tree = Tree("wiki", id="wiki")
-                wiki.show_root = False
-                yield wiki
-                with VerticalScroll(id="pagina"):
-                    yield Markdown(ESCOLHA_UMA_PAGINA, id="texto-da-pagina")
+                with ContentSwitcher(initial=LISTA_DA_WIKI, id="telas-da-wiki"):
+                    with VerticalScroll(id=LISTA_DA_WIKI):
+                        wiki: Tree = Tree("wiki", id="wiki")
+                        wiki.show_root = False
+                        yield wiki
+                    with VerticalScroll(id=PAGINA_DA_WIKI):
+                        yield Button("← voltar", id="voltar-a-lista", compact=True)
+                        yield Markdown("", id="texto-da-pagina")
 
     async def on_mount(self) -> None:
-        # As abas mudam com o clique, sem levar o foco: o cursor fica no campo.
-        self.query_one(TabbedContent).query_one(Tabs).can_focus = False
         self.mostrar_ficha(self.agente)
         await self.mostrar_memoria(self.sessao)
         await self.desenhar_wiki()
         if self.estado.pagina is not None:
             await self.abrir_pagina(self.estado.pagina)
+        sem_foco(self)
 
     @on(TabbedContent.TabActivated)
     async def trocar_de_aba(self, evento: TabbedContent.TabActivated) -> None:
@@ -123,22 +112,7 @@ class PainelDeExplicacao(Vertical):
     def mostrar_ficha(self, agente: Agente) -> None:
         """A ficha segue o chat que esta na frente."""
         self.agente = agente
-        self.ficha = self.programa.ficha(agente)
-        self._escrever_ficha(self.ficha)
-
-    def _escrever_ficha(self, ficha: Ficha) -> None:
-        self.query_one("#ficha-nome", Label).update(ficha.nome)
-        self.query_one("#ficha-marca", Label).display = ficha.do_software
-        valores = {
-            "papel": ficha.papel,
-            "modelo": ficha.modelo,
-            "esforco": ficha.esforco,
-            "ferramentas": lista(ficha.ferramentas),
-            "ferramentas-da-maquina": lista(ficha.ferramentas_da_maquina),
-        }
-        for chave, valor in valores.items():
-            self.query_one(f"#ficha-{chave}", Label).update(valor)
-        self.query_one("#ficha-instrucoes", Static).update(ficha.instrucoes)
+        self.query_one(FichaNaTela).mostrar(self.programa.ficha(agente))
 
     # --- a memoria -----------------------------------------------------------
 
@@ -150,7 +124,9 @@ class PainelDeExplicacao(Vertical):
         texto = texto_da_memoria(sessao.memoria)
         if texto != self._memoria_desenhada:
             self._memoria_desenhada = texto
-            await self.query_one("#memoria", Markdown).update(texto)
+            memoria = self.query_one("#memoria", Markdown)
+            await memoria.update(texto)
+            sem_foco(memoria)
 
     # --- a wiki --------------------------------------------------------------
 
@@ -174,7 +150,8 @@ class PainelDeExplicacao(Vertical):
             await self.abrir_pagina(evento.node.data)
 
     async def abrir_pagina(self, dado: tuple) -> None:
-        """A pagina abre aqui, no painel: a area de trabalho e so das tarefas."""
+        """A pagina abre aqui, no lugar da lista: a area de trabalho e so das
+        tarefas."""
         localizador = self.ambiente.raiz_wiki.localizador
         try:
             if dado[0] == "index":
@@ -186,4 +163,14 @@ class PainelDeExplicacao(Vertical):
             self.notify("Não consegui ler esta página da wiki.", severity="error")
             return
         self.estado.pagina = dado
-        await self.query_one("#texto-da-pagina", Markdown).update(texto)
+        markdown = self.query_one("#texto-da-pagina", Markdown)
+        await markdown.update(texto)
+        sem_foco(markdown)
+        self.query_one("#telas-da-wiki", ContentSwitcher).current = PAGINA_DA_WIKI
+        self.query_one(f"#{PAGINA_DA_WIKI}", VerticalScroll).scroll_home(animate=False)
+
+    @on(Button.Pressed, "#voltar-a-lista")
+    def voltar_a_lista(self, evento: Button.Pressed) -> None:
+        evento.stop()
+        self.estado.pagina = None
+        self.query_one("#telas-da-wiki", ContentSwitcher).current = LISTA_DA_WIKI

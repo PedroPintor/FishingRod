@@ -108,6 +108,17 @@ As partes são o plano inicial e podem mudar. Quando mudarem, registre aqui o qu
   abas; a memória muda de lugar para dentro dele.
 - [x] **Wiki no painel:** a árvore da wiki e a página aberta dentro da aba "wiki".
 - [x] **Ficha do agente:** a aba "ficha", montada a partir do agente e do catálogo.
+- [x] **Ajustes depois do retorno do Pedro** (2026-10-21), que ele viu na tela:
+  - **Bug da wiki:** depois de abrir o `index`, clicar em "memória" ou "ficha" voltava para a aba
+    "wiki", e não dava para sair dela.
+  - **Voltar na wiki:** a aba "wiki" mostra a lista; clicar num arquivo mostra só ele, com
+    **← voltar** para a lista.
+  - **Janela do ambiente:** um botão **⚙ ambiente** no pé da lateral abre uma janela por cima da
+    tela, com duas seções: **início** (o nome do ambiente e as frentes, com quantas tarefas cada
+    uma tem) e **agentes** (a lista dos agentes e a ficha de cada um, só para ler). É o começo da
+    área de configurações do ambiente. Ver [configurações do ambiente](../ideias/configuracoes-do-ambiente.md).
+  - **Botões compactos:** todos os botões, os campos de digitação e a escolha da sessão ficam com
+    uma linha só, sem borda e com fundo de cor (a "opção A" das três que a IA mostrou).
 
 ### O que mudou no caminho
 
@@ -125,11 +136,23 @@ As partes são o plano inicial e podem mudar. Quando mudarem, registre aqui o qu
   `opcoes_do_claude` (em `montagem.py`) chama o `montar_opcoes` do adaptador e lê dele o esforço,
   as ferramentas da máquina e as instruções. Assim, se as opções mudarem, a ficha muda junto. As
   instruções vêm do `system_prompt`, que é o texto exato que o Claude recebe.
+- **A lista de agentes voltou, mas na janela do ambiente.** Tirar os agentes da lateral deixou o
+  usuário sem saber quais agentes existem, a não ser clicando em "+ chat". Agora eles estão na
+  seção "agentes" da janela do ambiente, com a ficha de cada um.
+- **Nada dentro do painel de explicação recebe foco** — nem a árvore da wiki, nem os quadros de
+  texto, além do botão e das abas. A causa do bug da wiki: clicar no `index` levava o foco para a
+  árvore; ao trocar de aba, o foco caía num quadro da aba "wiki", e a Textual volta para a aba que
+  tem algo focado. Sem foco dentro do painel, isso não acontece, e o cursor fica sempre no campo do
+  chat. Clicar e rolar com o mouse continuam funcionando; navegar no painel pelo teclado fica para
+  os atalhos.
+- **O jeito dos botões fica num lugar só:** o CSS do `FishingRodApp` (`interface/app.py`). Cada
+  botão e campo é criado compacto, e a cor e o respiro vêm de lá.
+- **A ficha virou um componente (`FichaNaTela`)**, o mesmo no painel e na janela do ambiente.
 
 ## Como testar
 
 O que o Pedro faz na tela e o que tem que acontecer. Ao lado de cada item, o teste automático que
-confere, em `tests/interface/test_explicacao.py`.
+confere, em `tests/interface/test_explicacao.py` e `tests/interface/test_janela_do_ambiente.py`.
 
 - [x] Entro num ambiente → a lateral mostra só frentes e tarefas. *Teste:* a tela do ambiente não
   tem mais a wiki nem a lista de agentes na lateral (`test_a_lateral_mostra_so_frentes_e_tarefas`).
@@ -156,6 +179,15 @@ confere, em `tests/interface/test_explicacao.py`.
   (`test_mexer_no_painel_nao_interrompe_a_conversa_nem_tira_o_foco`).
 - [x] Com duas tarefas abertas, abro o painel numa → a outra continua como estava. *Teste:* o
   painel é de cada tarefa (`test_o_painel_e_de_cada_tarefa`).
+- [x] Na aba "wiki", clico no `index` e depois em "memória" e em "ficha" → cada aba abre, e o
+  cursor continua no campo do chat. *Teste:* depois de abrir o index, as outras abas ainda abrem
+  (`test_depois_de_abrir_o_index_as_outras_abas_ainda_abrem`).
+- [x] Abro o `index` e aperto **← voltar** → vejo a lista da wiki de novo. *Teste:* voltar na wiki
+  mostra a lista de novo (`test_voltar_na_wiki_mostra_a_lista_de_novo`).
+- [x] Aperto **⚙ ambiente** → abre a janela na seção "início", com o nome do ambiente e as frentes;
+  Esc fecha. *Teste:* `test_o_botao_ambiente_abre_a_janela_com_o_nome_e_as_frentes`.
+- [x] Na janela, vou em "agentes" → vejo a lista dos agentes e a ficha do que está marcado.
+  *Teste:* `test_a_secao_agentes_lista_os_agentes_e_mostra_a_ficha_de_cada_um`.
 
 ## Decisões usadas
 
@@ -190,6 +222,11 @@ Quando uma virar trabalho de verdade, ganha um arquivo em `docs/ideias/` e a lin
 - **Aba "wiki" mostrando o que a sessão leu:** hoje ela só mostra a wiki inteira — o caminho do
   agente aceso na wiki explica o que ele usou para responder. Ver
   [ver o que a sessão leu da wiki](../ideias/ver-o-que-a-sessao-leu-da-wiki.md).
+- **Janela do ambiente crescer:** hoje ela só mostra o nome, as frentes e os agentes — é o
+  lugar das configurações do ambiente que vierem. Ver
+  [configurações do ambiente](../ideias/configuracoes-do-ambiente.md).
+- **Botões mais parecidos com pílula:** hoje são compactos com fundo de cor — pontas de meia-lua
+  pedem uma fonte especial (Nerd Font) no terminal, e quem não tiver vê quadradinhos com "?".
 - **Wiki sem tarefa aberta:** hoje a wiki só aparece dentro de uma tarefa — talvez faça falta ver
   a wiki do ambiente sem abrir tarefa nenhuma.
 
