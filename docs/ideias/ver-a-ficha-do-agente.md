@@ -21,6 +21,22 @@ Quem pode mexer em cada parte depende do agente:
 | Bibliotecário | fixa | fixa: ele é a solução do software para cuidar da wiki; se o usuário mexer nele, o software perde o controle de como a wiki é cuidada |
 | Os outros agentes | o usuário escolhe numa lista do que é permitido, que o software oferece | o usuário escreve, seguindo um modelo base (ver [formato de agente](formato-de-agente.md)) |
 
+Campo por campo, decidido em 2026-10-21 (o card 003 só mostra; editar vem depois):
+
+| Campo | Orquestrador | Bibliotecário | Agente comum |
+|---|---|---|---|
+| Nome | só leitura | só leitura | edita |
+| Papel | só leitura | só leitura | só leitura |
+| Modelo | edita | edita | edita |
+| Esforço de raciocínio | edita | edita | edita |
+| Ferramentas (as ações do FishingRod, pelo nome) | só leitura | só leitura | tira e põe numa lista |
+| Ferramentas da máquina | só leitura | só leitura | só leitura |
+| Instruções | edita | só leitura | edita |
+
+O modelo e o esforço todo mundo pode mudar: escolher o modelo é o básico. As outras opções do SDK
+não aparecem (limite de gasto, limite de passos, modelo reserva, formato de saída, subagentes,
+skills, plugins e o encanamento); o card 003 diz por quê.
+
 Talvez o bibliotecário nem precise aparecer. Revisar mais para a frente se a configuração do
 orquestrador deve mesmo ser fixa.
 

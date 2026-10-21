@@ -57,40 +57,46 @@ Os textos e as larguras podem mudar depois que o Pedro vir na tela.
 
 ## A ficha do agente
 
-Só mostra o que existe; nada é editável neste card.
+A ficha tem duas partes. A **configuração** é feita de campos, como um formulário que um dia vai
+poder ser editado; a de **instruções** é o texto que o agente recebe. Neste card a ficha só
+mostra: nada é editável.
 
 ```
 orquestrador                                        do software
-abre cada sessão · modelo: opus
 
 CONFIGURAÇÃO
-Pode pedir (sempre com a sua confirmação):
-  • criar_frente — Cria uma frente de trabalho no ambiente.
-  • criar_tarefa — Cria uma tarefa na frente, já com uma sessão e o chat do orquestrador.
-  • …
-Não pode:
-  • criar_sessao — só você abre sessões.
-  • usar nada da sua máquina: arquivos, terminal, internet.
-  • abrir chat com um agente fora da lista do software.
+  Papel                    abre cada sessão
+  Modelo                   opus
+  Esforço de raciocínio    padrão do Claude
+  Ferramentas              criar_frente · criar_tarefa · criar_chat ·
+                           criar_etapa · concluir_etapa · anotar_memoria
+  Ferramentas da máquina   nenhuma
 
 INSTRUÇÕES
-Nenhuma instrução escrita. Ele age com o que o modelo já sabe e com a descrição das
-ações acima.
+  Nenhuma instrução escrita.
 ```
 
-- **Cabeçalho:** nome, papel ("abre cada sessão" ou "pode ser chamado num chat"), modelo e a
-  marca "do software" (os dois agentes de hoje são do software).
-- **Pode pedir:** as ações do catálogo que o agente pode acionar, com a descrição de cada uma,
-  tiradas do próprio catálogo, para a ficha nunca desmentir o que o agente recebe. Diz que toda
-  ação pede confirmação ([D15](../decisoes/D15-orquestrador-age-com-confirmacao.md)).
-- **Não pode:** as ações que são só do usuário (tiradas do catálogo), mais duas frases fixas: sem
-  ferramentas da máquina ([D16](../decisoes/D16-agentes-sem-ferramentas-da-maquina.md)) e só a
-  lista de agentes do software ([D20](../decisoes/D20-lista-fixa-de-agentes.md)).
-- **Instruções:** o texto exato que o Claude recebe como instrução; quando é vazio, a frase
-  "Nenhuma instrução escrita…".
+Cada valor sai do que está configurado de verdade, para a ficha nunca desmentir o que o Claude
+recebe:
 
-O bibliotecário tem a sua ficha também, do mesmo jeito: hoje ele não pode pedir nenhuma ação e
-não tem instruções.
+| Campo | O que é | De onde sai |
+|---|---|---|
+| Nome | o nome do agente, no topo, com a marca "do software" | o agente |
+| Papel | "abre cada sessão" ou "pode ser chamado num chat" | o papel do agente |
+| Modelo | opus, sonnet, haiku | o modelo do agente |
+| Esforço de raciocínio | o quanto ele pensa antes de responder | as opções que vão para o Claude; hoje não é escolhido, então é "padrão do Claude" |
+| Ferramentas | as ações do FishingRod que ele pode pedir, só pelo nome | as ferramentas do agente, conferidas no catálogo |
+| Ferramentas da máquina | arquivos, terminal, internet | as opções que vão para o Claude; hoje "nenhuma" ([D16](../decisoes/D16-agentes-sem-ferramentas-da-maquina.md)) |
+| Instruções | o texto exato que o Claude recebe como instrução | as regras do agente; vazio vira "Nenhuma instrução escrita." |
+
+Ficam de fora as outras opções do SDK. O limite de gasto em dólares só serve para quem usa chave
+de API, e aqui é só a assinatura ([D09](../decisoes/D09-so-assinatura-do-claude.md)). O limite de
+passos por resposta é "sem limite" de propósito. O modelo reserva, o formato de saída, os
+subagentes do SDK, as skills e os plugins estão desligados ou não são usados. O resto é encanamento
+(pasta de trabalho, retomada da conversa, credenciais, permissões internas).
+
+O bibliotecário tem a sua ficha também, do mesmo jeito e só para leitura: hoje ele não tem
+ferramentas nem instruções.
 
 ## Partes
 
@@ -112,9 +118,10 @@ confere; o nome exato entra quando o teste existir.
   tem mais a wiki nem a lista de agentes na lateral.
 - [ ] Abro uma tarefa e aperto "explicar" → o painel abre à direita do chat, na aba "ficha";
   aperto de novo → fecha. *Teste:* o botão mostra e esconde o painel.
-- [ ] Com o chat do orquestrador na frente, olho a ficha → vejo o modelo, as ações que ele pode
-  pedir, "criar_sessao" em "não pode" e "Nenhuma instrução escrita". *Teste:* o texto da ficha do
-  orquestrador sai do agente e do catálogo.
+- [ ] Com o chat do orquestrador na frente, olho a ficha → vejo papel, modelo "opus", esforço
+  "padrão do Claude", as seis ferramentas pelo nome (sem "criar_sessao"), ferramentas da máquina
+  "nenhuma" e "Nenhuma instrução escrita.". *Teste:* cada campo da ficha sai do agente, do
+  catálogo e das opções que vão para o Claude.
 - [ ] Troco para o chat do bibliotecário → a ficha troca para a dele. *Teste:* a ficha segue o
   chat ativo.
 - [ ] Abro a aba "memória" → vejo a memória da sessão, como antes. *Teste:* a aba mostra as
@@ -130,7 +137,7 @@ confere; o nome exato entra quando o teste existir.
 ## Decisões usadas
 
 - [D07 — começar pelo terminal](../decisoes/D07-comecar-pelo-terminal.md)
-- [D15 — o orquestrador age com confirmação](../decisoes/D15-orquestrador-age-com-confirmacao.md)
+- [D09 — só a assinatura do Claude](../decisoes/D09-so-assinatura-do-claude.md)
 - [D16 — agentes sem ferramentas da máquina](../decisoes/D16-agentes-sem-ferramentas-da-maquina.md)
 - [D17 — memória é quadro branco](../decisoes/D17-memoria-e-quadro-branco.md)
 - [D20 — lista fixa de agentes](../decisoes/D20-lista-fixa-de-agentes.md)
@@ -145,6 +152,10 @@ Quando uma virar trabalho de verdade, ganha um arquivo em `docs/ideias/` e a lin
   mexer em duas ao mesmo tempo. Ver [trabalhar em duas tarefas lado a lado](../ideias/trabalhar-em-duas-tarefas-lado-a-lado.md).
 - **Atalhos de teclado:** hoje troca-se de tarefa, chat e aba com o mouse ou o Tab — atalhos dão a
   sensação de jogo que responde na hora.
+- **Editar a configuração na ficha:** hoje a ficha só mostra — trocar o modelo e o esforço (em
+  todos os agentes) e tirar e pôr ferramentas (nos agentes comuns) faz da ficha o lugar de
+  reconfigurar o agente. Quem pode mexer em quê está em
+  [ver a ficha do agente](../ideias/ver-a-ficha-do-agente.md).
 - **Instruções do orquestrador:** hoje a ficha mostra "nenhuma instrução" e nada é editável — o
   usuário escrevendo as instruções faz o orquestrador ter sentido no ambiente. Ver
   [escrever as instruções do orquestrador](../ideias/escrever-instrucoes-do-orquestrador.md).
