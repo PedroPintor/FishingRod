@@ -27,7 +27,9 @@ produto. Os agentes do Claude Code e os agentes do FishingRod são coisas difere
 - Mesmo sem o prompt do Claude Code, o programa do Claude sempre põe uma linha de apresentação
   ("You are a Claude agent, built on Anthropic's Claude Agent SDK.") antes das regras do agente.
   Não há opção que a tire.
-- A conversa não é copiada para `~/.claude/projects/` (opção `no-session-persistence`).
+- A conversa não era copiada para `~/.claude/projects/` (opção `no-session-persistence`). Isso
+  muda com a [D22](D22-conversa-continua-pelo-claude.md): o Claude passa a guardar a conversa, para
+  o agente retomá-la.
 - Os testes marcados `sdk_real` usam o Claude de verdade e gastam a assinatura. Ficam fora da
   suíte padrão e só rodam com `uv run pytest -m sdk_real`.
 
